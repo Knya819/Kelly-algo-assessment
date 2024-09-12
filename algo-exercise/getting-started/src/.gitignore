@@ -33,7 +33,3 @@ build/
 ### Mac OS ###
 .DS_Store
 
-
-Draft.java
-DraftTest.java
-DraftBackTest.java
