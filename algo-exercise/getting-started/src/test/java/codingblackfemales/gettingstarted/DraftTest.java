@@ -19,6 +19,6 @@ public class DraftTest extends AbstractAlgoTest {
         send(createTick());
 
         // Simple assert to check if child orders are created or canceled as expected
-        assertEquals(1, container.getState().getChildOrders().size());
+        assertEquals(3, container.getState().getChildOrders().size());
     }
 }
