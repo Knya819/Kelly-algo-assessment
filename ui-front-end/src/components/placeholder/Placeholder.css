@@ -1,30 +1,96 @@
 .Placeholder {
   display: flex;
   flex-direction: column;
-  font-size: 24px;
-  gap: 24px;
-}
-
-.Placeholder-instructions {
   align-items: center;
-  display: flex;
-  flex: 1 1 auto;
-  justify-content: center;
-  position: relative;
+  font-size: 10px;
+  gap: 8px;
+  height: 100vh;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
+.Placeholder-instructions,
 .Placeholder-design {
-  background-image: url(/market-depth.png);
-  background-repeat: no-repeat;
-  background-position-x: center;
-  background-position-y: center;
-  background-size: contain;
-  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  width: 90%;
+  max-width: 500px; /* Reduce the max width of the table container */
+  max-height: 50vh;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.Placeholder-instructions p {
+  font-size: 14px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+table {
+  width: 90%; /* Reduce the overall width of the table */
+  max-width: 400px; /* Limit the table’s max width */
+  border-collapse: collapse;
+  margin: auto; /* Center the table */
+  margin-bottom: 20px; /* Adds space between the table and the button (2cm = ~20px) */
+}
+
+table th,
+table td {
+  border: 1px solid #ccc;
+  padding: 4px; /* Reduce padding */
+  text-align: center;
+  font-size: 10px; /* Reduce text size */
+}
+
+table th {
+  background-color: #f4f4f4;
 }
 
 .Placeholder-buttonContainer {
-  align-items: center;
-  display: flex;
-  flex: 0 0 60px;
-  justify-content: center;
+  margin-top: 0; /* Remove extra margin */
+  text-align: center;
+  flex-shrink: 0;
+  margin-bottom: 20px; /* Optional: space below the button */
+}
+
+button {
+  padding: 6px 12px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+/* Media query for smaller screens */
+@media (max-width: 768px) {
+  .Placeholder-instructions,
+  .Placeholder-design {
+    max-width: 100%;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  /* Allow horizontal scrolling for small screens */
+  table {
+    width: 100%; /* Take full width of the container */
+    max-width: none; /* Remove max-width for scrolling */
+    display: block;
+    overflow-x: auto; /* Enable horizontal scrolling */
+    white-space: nowrap; /* Prevent wrapping of text in cells */
+  }
+
+  table th,
+  table td {
+    font-size: 9px; /* Further reduce font size on smaller screens */
+    padding: 2px; /* Smaller padding */
+  }
 }
