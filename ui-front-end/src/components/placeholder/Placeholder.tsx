@@ -78,7 +78,7 @@ export const Placeholder = ({ data }: { data: MarketDepthRow[] }) => {
       {displayState === "instructions" ? (
         <div className="Placeholder-instructions">
           <p style={{ fontSize: "22px", textAlign: "center" }}>
-            Click here to see the design
+            Click down to view the design
           </p>
           <div style={{ fontSize: "28px", textAlign: "center" }}>⬇</div> {/* Arrow on a new line */}
         </div>
