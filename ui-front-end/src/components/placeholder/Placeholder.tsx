@@ -51,18 +51,18 @@ export const Placeholder = ({ data }: { data: MarketDepthRow[] }) => {
     const previousPrice = previousBidPrices[index];
     if (currentPrice > previousPrice) {
       return "⬆"; // Up arrow for increase
-    } else  {
+    } else {
       return "⬇"; // Down arrow for decrease
-    } 
+    }
   };
 
   const getAskPriceArrow = (currentPrice: number, index: number) => {
     const previousPrice = previousAskPrices[index];
     if (currentPrice > previousPrice) {
       return "⬆"; // Up arrow for increase
-    } else  {
+    } else {
       return "⬇"; // Down arrow for decrease
-    } 
+    }
   };
 
   const toggleDisplayState = () => {
@@ -77,11 +77,10 @@ export const Placeholder = ({ data }: { data: MarketDepthRow[] }) => {
     <div className="Placeholder">
       {displayState === "instructions" ? (
         <div className="Placeholder-instructions">
-          <p>
-            This table will display live market depth data, including bids, asks, and their
-            quantities at different price levels. Once the data is ready, it will automatically
-            be shown here.
+          <p style={{ fontSize: "22px", textAlign: "center" }}>
+            Click here to see the design
           </p>
+          <div style={{ fontSize: "28px", textAlign: "center" }}>⬇</div> {/* Arrow on a new line */}
         </div>
       ) : (
         <div className="Placeholder-design">
@@ -116,23 +115,44 @@ export const Placeholder = ({ data }: { data: MarketDepthRow[] }) => {
                     <div
                       style={{
                         position: "absolute",
+                        top: 0,
+                        bottom: 0,
                         right: 0, /* Start from the right */
                         width: `${getBarWidth(row.bidQuantity, maxBidQuantity, minBidQuantity)}%`,
                         backgroundColor: "rgba(0, 76, 151, 0.85)", /* RAL 5017 */
                         height: "100%",
+                        zIndex: 0, // Ensure the text stays on top
                       }}
                     ></div>
                     <span style={{ position: "relative", zIndex: 1, color: "white", paddingRight: "2px" }}>
                       {row.bidQuantity}
                     </span> {/* White text aligned right */}
                   </td>
-                  <td style={{ textAlign: "right", paddingRight: "8px" }}>
-                    {/* Bid Price with dynamic arrow (price aligned right, arrow unchanged) */}
-                    <span style={{ paddingRight: "8px", color: "grey" }}>{getBidPriceArrow(row.bid, index)}</span> {row.bid}
+                  <td style={{ position: "relative", textAlign: "right", paddingRight: "8px" }}>
+                    {/* Position the arrow absolutely and move it 2mm closer to the quantity column */}
+                    <span
+                      style={{
+                        position: "absolute",
+                        left: "3px", /* Move arrow closer to quantity */
+                        color: "grey",
+                      }}
+                    >
+                      {getBidPriceArrow(row.bid, index)}
+                    </span>
+                    {row.bid}
                   </td>
-                  <td style={{ textAlign: "left", paddingLeft: "8px" }}>
-                    {/* Ask Price with dynamic arrow (price aligned left, arrow unchanged) */}
-                    {row.offer} <span style={{ paddingLeft: "8px", color: "grey" }}>{getAskPriceArrow(row.offer, index)}</span>
+                  <td style={{ position: "relative", textAlign: "left", paddingLeft: "8px" }}>
+                    {row.offer}
+                    {/* Position the arrow absolutely and move it 2mm closer to the quantity column */}
+                    <span
+                      style={{
+                        position: "absolute",
+                        right: "3px", /* Move arrow closer to quantity */
+                        color: "grey",
+                      }}
+                    >
+                      {getAskPriceArrow(row.offer, index)}
+                    </span>
                   </td>
                   <td
                     style={{
@@ -145,9 +165,14 @@ export const Placeholder = ({ data }: { data: MarketDepthRow[] }) => {
                     {/* Red bar (ask) filling from left to right */}
                     <div
                       style={{
+                        position: "absolute",
+                        top: 0,
+                        bottom: 0,
+                        left: 0, /* Start from the left */
                         width: `${getBarWidth(row.offerQuantity, maxAskQuantity, minAskQuantity)}%`,
-                        backgroundColor: "rgba(216, 75, 32, 0.85)", /* RAL 2002 */
+                        backgroundColor: "rgba(204, 0, 0, 0.85)", /* RAL 3020 */
                         height: "100%",
+                        zIndex: 0, // Ensure the text stays on top
                       }}
                     ></div>
                     <span style={{ position: "relative", zIndex: 1, color: "white", paddingLeft: "2px" }}>
