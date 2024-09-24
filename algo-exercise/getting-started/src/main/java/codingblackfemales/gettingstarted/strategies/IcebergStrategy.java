@@ -11,15 +11,18 @@ public class IcebergStrategy implements ExecutionStrategy {
 
     @Override
     public Action execute(SimpleAlgoState state, long quantity, long price, long filledQuantity) {
-        // Iceberg logic: reveal only part of the order
-        long visibleQuantity = 100; // Example: reveal only 100 at a time
+        // Iceberg logic: reveal 10% of the total order size
         long remainingQuantity = quantity - filledQuantity;
-
+        
+        // Reveal 10% of the total order, but not more than the remaining quantity
+        long visibleQuantity = (long) Math.ceil(quantity * 0.10); // Calculate 10% of the total order
+        
         if (remainingQuantity > 0) {
-            long orderSize = Math.min(visibleQuantity, remainingQuantity);
-            return new CreateChildOrder(Side.BUY, orderSize, price); // Assuming this is your action
+            long orderSize = Math.min(visibleQuantity, remainingQuantity);  // Make sure not to exceed the remaining quantity
+            return new CreateChildOrder(Side.BUY, orderSize, price); // Create a new child order for the visible portion
         }
 
-        return NoAction.NoAction;
+        return NoAction.NoAction;  // No action if the order is fully filled
     }
 }
+
