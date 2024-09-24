@@ -2,6 +2,7 @@ package codingblackfemales.gettingstarted.strategies;
 
 import codingblackfemales.action.Action;
 import codingblackfemales.action.NoAction;
+import codingblackfemales.gettingstarted.helpers.OrderHelper;
 import codingblackfemales.action.CreateChildOrder;
 import codingblackfemales.sotw.SimpleAlgoState;
 import codingblackfemales.gettingstarted.helpers.OrderHelper;
@@ -19,21 +20,25 @@ public class VWAPStrategy implements ExecutionStrategy {
         long activeOrders = state.getActiveChildOrders().size();
         double vwap = OrderHelper.calculateVWAP(state);
 
+        // Buy if price is below VWAP and fewer than the max active orders
         if (price < vwap && activeOrders < MAX_ACTIVE_ORDERS) {
             logger.info("[VWAP] Adding buy order below VWAP at price: " + price + ", VWAP: " + vwap);
             return new CreateChildOrder(Side.BUY, quantity, price);
         }
 
-        if (price >= vwap * 1.05 && filledQuantity >= quantity) {
+        // Profit-taking logic: sell if the price is within the profit-taking interval
+        if (filledQuantity >= quantity && OrderHelper.isWithinProfitTargetInterval(state, price)) {
             logger.info("[VWAP] Selling for profit at price: " + price + " (Take Profit), VWAP: " + vwap);
             return new CreateChildOrder(Side.SELL, quantity, price);
         }
 
-        if (price <= vwap * 0.95 && filledQuantity >= quantity) {
-            logger.info("[VWAP] Selling to cut losses at price: " + price + " (Stop Loss), VWAP: " + vwap);
+        // Stop-loss logic: sell if the price is within the stop-loss interval
+        if (filledQuantity >= quantity && OrderHelper.isWithinStopLossInterval(state, price)) {
+            logger.info("[VWAP] Selling to cut losses within stop-loss range at price: " + price + " (Stop Loss), VWAP: " + vwap);
             return new CreateChildOrder(Side.SELL, quantity, price);
         }
 
+        // No action if none of the conditions are met
         return NoAction.NoAction;
     }
 }
