@@ -12,11 +12,12 @@ public class OrderManager {
     private static final Logger logger = LoggerFactory.getLogger(OrderManager.class);
 
     public static Action cancelOldestOrder(SimpleAlgoState state) {
-        if (state.getActiveChildOrders().size() >= 3) {
-            ChildOrder orderToCancel = state.getActiveChildOrders().get(0);  // Cancel the first active order: Not sure if is better to cancel  the first or the less profitable one
+        if (state.getActiveChildOrders().size() >= 3) { // use % of calculateTotalVolume next, see what happens
+            ChildOrder orderToCancel = state.getActiveChildOrders().get(0);  
             logger.info("[OrderManager] Cancelling order: " + orderToCancel);
             return new CancelChildOrder(orderToCancel);
         }
         return null;
     }
 }
+// Cancel the first active order: Not sure if is better to cancel  the first or the less profitable one
