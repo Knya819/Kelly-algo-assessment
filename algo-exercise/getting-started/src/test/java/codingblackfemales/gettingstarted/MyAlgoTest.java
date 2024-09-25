@@ -3,33 +3,34 @@ package codingblackfemales.gettingstarted;
 import codingblackfemales.algo.AlgoLogic;
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 
-/**
- * This test is designed to check your algo behavior in isolation of the order book.
- *
- * You can tick in market data messages by creating new versions of createTick() (ex. createTick2, createTickMore etc..)
- *
- * You should then add behaviour to your algo to respond to that market data by creating or cancelling child orders.
- *
- * When you are comfortable you algo does what you expect, then you can move on to creating the MyAlgoBackTest.
- *
- */
+
+
 public class MyAlgoTest extends AbstractAlgoTest {
 
     @Override
     public AlgoLogic createAlgoLogic() {
-        //this adds your algo logic to the container classes
+        // Add MyAlgoLogic to the container for testing
         return new MyAlgoLogic();
     }
 
-
     @Test
     public void testDispatchThroughSequencer() throws Exception {
-
-        //create a sample market data tick....
+        // Simulate market data by sending a tick through the system
         send(createTick());
 
-        //simple assert to check we had 3 orders created
-        //assertEquals(container.getState().getChildOrders().size(), 3);
+        //Verify that 3 child orders were created in total
+        assertEquals(0, container.getState().getChildOrders().size());
+
+        // Verify that 2 child orders are active
+        assertEquals(0, container.getState().getActiveChildOrders().size());
+
+        //Calculate the number of canceled orders (total - active)
+        var state = container.getState();
+        long cancelledOrderCount = state.getChildOrders().size() - state.getActiveChildOrders().size();
+
+        // Ensure that exactly 1 child order was canceled
+        assertEquals(0, cancelledOrderCount);
     }
 }

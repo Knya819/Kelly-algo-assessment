@@ -39,7 +39,7 @@ public class DraftTest extends AbstractAlgoTest {
     @Test
     public void testTWAPStrategyExecution() throws Exception {
         // Simulate low-volatility market condition for TWAP
-        setMarketConditionLowVolatility(); 
+        //setMarketConditionLowVolatility(); 
         send(createTick());
 
         // Assert a buy order is placed with TWAP strategy
@@ -50,7 +50,7 @@ public class DraftTest extends AbstractAlgoTest {
     @Test
     public void testVWAPStrategyExecution() throws Exception {
         // Simulate high-volatility market condition for VWAP
-        setMarketConditionHighVolatility();
+       // setMarketConditionHighVolatility();
         send(createTick());
 
         // Assert a buy order is placed with VWAP strategy
@@ -70,13 +70,13 @@ public class DraftTest extends AbstractAlgoTest {
         assertEquals(3, container.getState().getActiveChildOrders().size());
     }
 
-    // Helper method to simulate low volatility market condition
-    private void setMarketConditionLowVolatility() {
-        // Adjust this based on your tick data structure to simulate a low volatility state
-    }
+    // // Helper method to simulate low volatility market condition
+    // private void setMarketConditionLowVolatility() {
+    //     // Adjust this based on your tick data structure to simulate a low volatility state
+    // }
 
-    // Helper method to simulate high volatility market condition
-    private void setMarketConditionHighVolatility() {
-        // Adjust this based on your tick data structure to simulate a high volatility state
-    }
+    // // Helper method to simulate high volatility market condition
+    // private void setMarketConditionHighVolatility() {
+    //     // Adjust this based on your tick data structure to simulate a high volatility state
+    // }
 }

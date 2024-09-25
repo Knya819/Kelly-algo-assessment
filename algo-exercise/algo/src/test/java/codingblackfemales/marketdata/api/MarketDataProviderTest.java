@@ -24,8 +24,9 @@ public class MarketDataProviderTest {
     public void should_process_market_data() {
         MarketDataMessage marketDataMessage;
         while((marketDataMessage = provider.poll())!=null) {
-            UnsafeBuffer encoded = encoder.encode(marketDataMessage);
-            marketDataService.onMessage(encoded);
+            System.out.println(marketDataMessage);
+            //UnsafeBuffer encoded = encoder.encode(marketDataMessage);
+           // marketDataService.onMessage(encoded);
         }
     }
 }

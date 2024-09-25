@@ -7,18 +7,27 @@ import java.util.List;
 
 public class OrderHelper {
 
-   // Calculate TWAP: Time-Weighted Average Price
+   // Calculate TWAP: Time-Weighted Average Price using the last 100 child orders
     public static double calculateTWAP(SimpleAlgoState state) {
         List<ChildOrder> allOrders = state.getChildOrders();  // Get a list of all child orders (executed over time)
-        double totalPrice = 0;  // This will store the sum of all prices from the orders
-        int totalPeriods = allOrders.size();  // The number of orders corresponds to the time periods
+        int orderCount = allOrders.size();  // Total number of orders available
 
-        for (ChildOrder order : allOrders) {  // Loop through each order in the list
-            totalPrice += order.getPrice();  // Sum up the prices of all orders
+        // Ensure that we only consider the last 100 orders or fewer if there aren't 100 yet
+        int startIndex = Math.max(0, orderCount - 100);  // Start from the (orderCount - 100)th order, or 0 if less than 100
+        List<ChildOrder> lastOrders = allOrders.subList(startIndex, orderCount);  // Get the last 100 orders
+
+        double totalPrice = 0;  // This will store the sum of prices for the last 100 orders
+        int totalPeriods = lastOrders.size();  // The actual number of orders considered (could be less than 100 initially)
+
+        // Loop through each of the last orders and sum their prices
+        for (ChildOrder order : lastOrders) {
+            totalPrice += order.getPrice();
         }
 
-        return totalPrice / totalPeriods;  // TWAP: Average price over time periods
+        // Calculate TWAP: Average price over the considered periods (up to 100)
+        return totalPeriods > 0 ? totalPrice / totalPeriods : 0;
     }
+
 
 
         // Calculate VWAP: Volume-Weighted Average Price
@@ -32,7 +41,7 @@ public class OrderHelper {
             totalPriceVolume += order.getPrice() * order.getQuantity();  // Sum up the price-volume products
         }
 
-        return totalPriceVolume / totalVolume;  // VWAP: Total price-volume product divided by total volume
+        return totalVolume == 0 ? 0 :totalPriceVolume / totalVolume;  // VWAP: Total price-volume product divided by total volume
     }
 
 
@@ -73,6 +82,9 @@ public class OrderHelper {
         }
         return 5;  // Default to 5% of the market volume in calmer markets
     }
+    
+    //Consider to compare vwap and twap to set an interval
+     
 
     // Calculate profit target with an interval (e.g., between 5% and 7% above VWAP)
     public static boolean isWithinProfitTargetInterval(SimpleAlgoState state, double price) {
