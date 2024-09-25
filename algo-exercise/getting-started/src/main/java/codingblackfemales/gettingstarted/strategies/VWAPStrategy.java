@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 public class VWAPStrategy implements ExecutionStrategy {
 
     private static final Logger logger = LoggerFactory.getLogger(VWAPStrategy.class);
-    private final long MAX_ACTIVE_ORDERS = 3;
+    private final long MAX_ACTIVE_ORDERS = 3;// make it more dynamic in the future
 
     @Override
     public Action execute(SimpleAlgoState state, long quantity, long price, long filledQuantity) {
