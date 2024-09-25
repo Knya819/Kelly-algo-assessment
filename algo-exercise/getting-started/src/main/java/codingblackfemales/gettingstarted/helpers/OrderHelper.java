@@ -7,32 +7,34 @@ import java.util.List;
 
 public class OrderHelper {
 
-    // Calculate TWAP: Time-Weighted Average Price
+   // Calculate TWAP: Time-Weighted Average Price
     public static double calculateTWAP(SimpleAlgoState state) {
-        List<ChildOrder> allOrders = state.getChildOrders();
-        double totalPrice = 0;
-        int totalPeriods = allOrders.size();
+        List<ChildOrder> allOrders = state.getChildOrders();  // Get a list of all child orders (executed over time)
+        double totalPrice = 0;  // This will store the sum of all prices from the orders
+        int totalPeriods = allOrders.size();  // The number of orders corresponds to the time periods
 
-        for (ChildOrder order : allOrders) {
-            totalPrice += order.getPrice();
+        for (ChildOrder order : allOrders) {  // Loop through each order in the list
+            totalPrice += order.getPrice();  // Sum up the prices of all orders
         }
 
-        return totalPrice / totalPeriods;  // TWAP: Average price over time
+        return totalPrice / totalPeriods;  // TWAP: Average price over time periods
     }
 
-    // Calculate VWAP: Volume-Weighted Average Price
+
+        // Calculate VWAP: Volume-Weighted Average Price
     public static double calculateVWAP(SimpleAlgoState state) {
-        List<ChildOrder> activeOrders = state.getActiveChildOrders();
-        double totalVolume = 0;
-        double totalPriceVolume = 0;
+        List<ChildOrder> activeOrders = state.getActiveChildOrders();  // Get a list of all active child orders (trades executed)
+        double totalVolume = 0;  // To hold the total volume of trades
+        double totalPriceVolume = 0;  // To hold the sum of price * volume (price-volume product)
 
-        for (ChildOrder order : activeOrders) {
-            totalVolume += order.getQuantity();
-            totalPriceVolume += order.getPrice() * order.getQuantity();
+        for (ChildOrder order : activeOrders) {  // Loop through each active order
+            totalVolume += order.getQuantity();  // Sum up the total quantity (volume) traded
+            totalPriceVolume += order.getPrice() * order.getQuantity();  // Sum up the price-volume products
         }
 
-        return totalPriceVolume / totalVolume;
+        return totalPriceVolume / totalVolume;  // VWAP: Total price-volume product divided by total volume
     }
+
 
     // Calculate total market volume from child orders
     public static long calculateTotalVolume(SimpleAlgoState state) {
@@ -56,13 +58,12 @@ public class OrderHelper {
     }
 
     // Calculate total order size based on child orders
-    public static long calculateTotalOrderSize(SimpleAlgoState state) {
+    public static long calculateTotalOrderSize(SimpleAlgoState state) {// is actually the same as volume I need to think more about it
         return state.getChildOrders().stream()
             .mapToLong(ChildOrder::getQuantity)
             .sum();
     }
 
-    // New Methods for Interval-Based POVStrategy Logic
 
     // Determine the percentage of market volume to trade based on market volatility
     public static double determineVolumePercentage(SimpleAlgoState state) {
