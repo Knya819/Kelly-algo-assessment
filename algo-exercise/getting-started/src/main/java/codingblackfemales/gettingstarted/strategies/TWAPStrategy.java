@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 public class TWAPStrategy implements ExecutionStrategy {
 
     private static final Logger logger = LoggerFactory.getLogger(TWAPStrategy.class);
-    private final long MAX_ACTIVE_ORDERS = 3;
+    private final long MAX_ACTIVE_ORDERS = 3; // to be changed to something more dynamic
 
     @Override
     public Action execute(SimpleAlgoState state, long quantity, long price, long filledQuantity) {
