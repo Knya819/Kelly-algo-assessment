@@ -2,10 +2,18 @@ package codingblackfemales.gettingstarted.helpers;
 
 import codingblackfemales.sotw.ChildOrder;
 import codingblackfemales.sotw.SimpleAlgoState;
+import codingblackfemales.sotw.marketdata.BidLevel;
+import codingblackfemales.sotw.marketdata.AskLevel;
+
+
 
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class OrderHelper {
+        private static final Logger logger = LoggerFactory.getLogger(OrderHelper.class);
+
 
    // Calculate TWAP: Time-Weighted Average Price using the last 100 child orders
     public static double calculateTWAP(SimpleAlgoState state) {
@@ -29,20 +37,74 @@ public class OrderHelper {
     }
 
 
+    // Calculate VWAP: Volume-Weighted Average Price for Bids
+        public static double calculateBidVWAP(SimpleAlgoState state) {
+            int i = 0;
+            double totalVolume = 0;  // Total volume traded
+            double totalPriceVolume = 0;  // Sum of price * volume (price-volume product)
 
-        // Calculate VWAP: Volume-Weighted Average Price
-    public static double calculateVWAP(SimpleAlgoState state) {
-        List<ChildOrder> activeOrders = state.getActiveChildOrders();  // Get a list of all active child orders (trades executed)
-        double totalVolume = 0;  // To hold the total volume of trades
-        double totalPriceVolume = 0;  // To hold the sum of price * volume (price-volume product)
+            // Loop through bid levels in the order book
+            while (true) {
+                BidLevel bidLevel = state.getBidAt(i);  // Get the bid level at index i
 
-        for (ChildOrder order : activeOrders) {  // Loop through each active order
-            totalVolume += order.getQuantity();  // Sum up the total quantity (volume) traded
-            totalPriceVolume += order.getPrice() * order.getQuantity();  // Sum up the price-volume products
+                if (bidLevel == null) {  // Exit the loop if no more bid levels are available
+                    break;
+                }
+
+                long quantity = bidLevel.quantity;  // Quantity at this bid level
+                double price = bidLevel.price;  // Price at this bid level
+
+                totalVolume += quantity;  // Sum up the total quantity (volume) traded
+                totalPriceVolume += price * quantity;  // Sum up the price-volume products
+
+                i++;  // Move to the next bid level
+            }
+
+            // Guard against division by zero in case there is no volume
+            if (totalVolume == 0) {
+                logger.warn("[VWAP] Total bid volume is zero. Returning best bid price.");
+                return state.getBidAt(0).price;  // Return best bid price if no volume
+            }
+
+            // VWAP calculation: Total price-volume product divided by total volume
+            return totalPriceVolume / totalVolume;
         }
 
-        return totalVolume == 0 ? 0 :totalPriceVolume / totalVolume;  // VWAP: Total price-volume product divided by total volume
-    }
+        // Calculate VWAP: Volume-Weighted Average Price for Asks
+        public static double calculateAskVWAP(SimpleAlgoState state) {
+            int i = 0;
+            double totalVolume = 0;  // Total volume traded
+            double totalPriceVolume = 0;  // Sum of price * volume (price-volume product)
+
+            // Loop through ask levels in the order book
+            while (true) {
+                AskLevel askLevel = state.getAskAt(i);  // Get the ask level at index i
+
+                if (askLevel == null) {  // Exit the loop if no more ask levels are available
+                    break;
+                }
+
+                long quantity = askLevel.quantity;  // Quantity at this ask level
+                double price = askLevel.price;  // Price at this ask level
+
+                totalVolume += quantity;  // Sum up the total quantity (volume) traded
+                totalPriceVolume += price * quantity;  // Sum up the price-volume products
+
+                i++;  // Move to the next ask level
+            }
+
+            // Guard against division by zero in case there is no volume
+            if (totalVolume == 0) {
+                logger.warn("[VWAP] Total ask volume is zero. Returning best ask price.");
+                return state.getAskAt(0).price;  // Return best ask price if no volume
+            }
+
+            // VWAP calculation: Total price-volume product divided by total volume
+            return totalPriceVolume / totalVolume;
+        }
+
+
+
 
 
     // Calculate total market volume from child orders
@@ -88,7 +150,7 @@ public class OrderHelper {
 
     // Calculate profit target with an interval (e.g., between 5% and 7% above VWAP)
     public static boolean isWithinProfitTargetInterval(SimpleAlgoState state, double price) {
-        double vwap = calculateVWAP(state);
+        double vwap = calculateAskVWAP(state);
         double lowerBound = vwap * 1.05;  // 5% above VWAP
         double upperBound = vwap * 1.07;  // 7% above VWAP
         
@@ -98,7 +160,7 @@ public class OrderHelper {
 
     // Calculate stop-loss threshold with an interval (e.g., between 92% and 95% of VWAP)
     public static boolean isWithinStopLossInterval(SimpleAlgoState state, double price) {
-        double vwap = calculateVWAP(state);
+        double vwap = calculateAskVWAP(state);
         double lowerBound = vwap * 0.92;  // 92% of VWAP
         double upperBound = vwap * 0.95;  // 95% of VWAP
         
