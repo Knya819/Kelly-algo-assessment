@@ -3,50 +3,158 @@ package codingblackfemales.gettingstarted;
 import codingblackfemales.action.Action;
 import codingblackfemales.action.NoAction;
 import codingblackfemales.action.CreateChildOrder;
-import codingblackfemales.action.CancelChildOrder;
+import codingblackfemales.sotw.marketdata.AskLevel;
 import codingblackfemales.sotw.marketdata.BidLevel;
 import codingblackfemales.algo.AlgoLogic;
 import codingblackfemales.sotw.SimpleAlgoState;
-import codingblackfemales.sotw.ChildOrder;
-import codingblackfemales.gettingstarted.helpers.OrderHelper;  
-
+import codingblackfemales.gettingstarted.helpers.OrderHelper;
+import codingblackfemales.gettingstarted.helpers.OrderManager;
 import messages.order.Side;
-
-
-import codingblackfemales.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MyAlgoLogic implements AlgoLogic {
 
     private static final Logger logger = LoggerFactory.getLogger(MyAlgoLogic.class);
     private static final long MAX_ACTIVE_ORDERS = 3; // Maximum active orders (can be made dynamic)
 
+    private List<BidLevel> localBidLevels = new ArrayList<>();  // Local copy of bid levels
+    private List<AskLevel> localAskLevels = new ArrayList<>();  // Local copy of ask levels
+
     @Override
     public Action evaluate(SimpleAlgoState state) {
+        // Initialize local bid and ask levels if empty
+        if (localBidLevels.isEmpty()) {
+            for (int i = 0; i < state.getBidLevels(); i++) {
+                localBidLevels.add(state.getBidAt(i));
+            }
+        }
+        if (localAskLevels.isEmpty()) {
+            for (int i = 0; i < state.getAskLevels(); i++) {
+                localAskLevels.add(state.getAskAt(i));
+            }
+        }
 
-        var orderBookAsString = Util.orderBookToString(state);
-        logger.info("[MYALGO] The state of the order book is:\n" + orderBookAsString);
+        // Log the state of the order book
+        logger.info("[MYALGO] The state of the order book is:\n" + formatOrderBook());
 
-        long quantity = 99; // Define the quantity for orders
-        long price = state.getBidAt(0).price; // Use the best bid price for reference
-        //long filledQuantity = calculateFilledQuantity(state); // Filled quantity of orders
-        long activeOrders = state.getActiveChildOrders().size(); // Current number of active child orders
-        double vwap = OrderHelper.calculateVWAP(state); // Calculate VWAP for decision making
+        // Step 1: Use OrderManager to handle fully filled orders or too many active orders
+        Action manageOrdersAction = OrderManager.manageOrders(state);
+        if (manageOrdersAction != null) {
+            return manageOrdersAction;  // If any action is returned (cancel order), return it
+        }
 
-        logger.info("[MYALGO] VWAP: " + vwap + ", Current price: " + price);
+        // Buy logic: Buy if the price is below BidVWAP and fewer than the max allowed active orders
+        double bidVwap = OrderHelper.calculateBidVWAP(state);
 
-        // BUY Logic: Buy if the price is below VWAP and fewer than the max allowed active orders
-        if ( activeOrders < MAX_ACTIVE_ORDERS) {
-            logger.info("[MYALGO] Placing buy order below VWAP at price: " + price);
-            logger.info("[MYALGO] Have:" + state.getChildOrders().size() + " children, want 3, joining passive side of book with: " + quantity + " @ " + price);
-
-            Action action = new CreateChildOrder(Side.BUY, quantity, price);
-            return action;
-        }else{
-            logger.info("[MYALGO] Have:" + state.getChildOrders().size() + " children, want 3, done.");
+        // Check if there are any available bid levels
+        if (localBidLevels.isEmpty()) {
+            logger.info("[MYALGO] No available bid levels, no action possible.");
             return NoAction.NoAction;
         }
 
-       }
+        // Place buy order if conditions are met
+        if (state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
+            BidLevel bestBid = localBidLevels.get(0);
+            long price = bestBid.price;
+            long quantity = bestBid.quantity;
+
+            if (price <= bidVwap) {
+                logger.info("[MYALGO] Placing buy order below BidVWAP: " + bidVwap + " at price: " + price);
+                Action action = new CreateChildOrder(Side.BUY, quantity, price);
+
+                // Update the local bid levels by removing or adjusting the filled bid level
+                updateLocalBidLevels(price, quantity);
+
+                // Log the updated local order book state
+                logger.info("[MYALGO] Updated local order book state:\n" + formatOrderBook());
+
+                return action;
+            }
+        }
+
+        // SELL Logic: Sell if the price is above AskVWAP and fewer than the max allowed active orders
+        double askVwap = OrderHelper.calculateAskVWAP(state);
+
+        // Check if there are any available ask levels
+        if (localAskLevels.isEmpty()) {
+            logger.info("[MYALGO] No available ask levels, no action possible.");
+            return NoAction.NoAction;
+        }
+
+        // Place sell order if conditions are met
+        if (state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
+            AskLevel bestAsk = localAskLevels.get(0);  // Get the best ask level
+            long askPrice = bestAsk.price;
+            long askQuantity = bestAsk.quantity;
+
+            if (askPrice >= askVwap) {
+                logger.info("[MYALGO] Placing sell order above AskVWAP: " + askVwap + " at price: " + askPrice);
+                Action action = new CreateChildOrder(Side.SELL, askQuantity, askPrice);
+
+                // Update the local ask levels by removing or adjusting the filled ask level
+                updateLocalAskLevels(askPrice, askQuantity);
+
+                // Log the updated local order book state
+                logger.info("[MYALGO] Updated local order book state:\n" + formatOrderBook());
+
+                return action;
+            }
+        }
+
+        logger.info("[MYALGO] No action required, done for now.");
+        return NoAction.NoAction;
     }
+
+    // Method to update local bid levels by reducing quantity and removing fully filled levels
+    private void updateLocalBidLevels(long price, long filledQuantity) {
+        for (int i = 0; i < localBidLevels.size(); i++) {
+            BidLevel bidLevel = localBidLevels.get(i);
+            if (bidLevel.price == price) {
+                long remainingQuantity = bidLevel.quantity - filledQuantity;
+                if (remainingQuantity <= 0) {
+                    logger.info("[MYALGO] Removing bid level at price: " + price + " as quantity " + filledQuantity + " is fully bought.");
+                    localBidLevels.remove(i);  // Remove from the local copy
+                } else {
+                    bidLevel.quantity = remainingQuantity;  // Update the quantity locally
+                    logger.info("[MYALGO] Updated bid level at price: " + price + ", remaining quantity: " + remainingQuantity);
+                }
+                break;  // Exit the loop once the level is updated or removed
+            }
+        }
+    }
+
+    // Method to update local ask levels by reducing quantity and removing fully filled levels
+    private void updateLocalAskLevels(long price, long filledQuantity) {
+        for (int i = 0; i < localAskLevels.size(); i++) {
+            AskLevel askLevel = localAskLevels.get(i);
+            if (askLevel.price == price) {
+                long remainingQuantity = askLevel.quantity - filledQuantity;
+                if (remainingQuantity <= 0) {
+                    logger.info("[MYALGO] Removing ask level at price: " + price + " as quantity " + filledQuantity + " is fully sold.");
+                    localAskLevels.remove(i);  // Remove from the local copy
+                } else {
+                    askLevel.quantity = remainingQuantity;  // Update the quantity locally
+                    logger.info("[MYALGO] Updated ask level at price: " + price + ", remaining quantity: " + remainingQuantity);
+                }
+                break;  // Exit the loop once the level is updated or removed
+            }
+        }
+    }
+
+    // Utility method to format the order book for better logging
+    private String formatOrderBook() {
+        StringBuilder sb = new StringBuilder("|----BID-----|\n");
+        for (BidLevel level : localBidLevels) {
+            sb.append(String.format("%6d @ %6d\n", level.quantity, level.price));
+        }
+        sb.append("|----ASK-----|\n");
+        for (AskLevel level : localAskLevels) {
+            sb.append(String.format("%6d @ %6d\n", level.quantity, level.price));
+        }
+        return sb.toString();
+    }
+}
