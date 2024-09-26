@@ -18,7 +18,7 @@ public class VWAPStrategy implements ExecutionStrategy {
     @Override
     public Action execute(SimpleAlgoState state, long quantity, long price, long filledQuantity) {
         long activeOrders = state.getActiveChildOrders().size();
-        double vwap = OrderHelper.calculateVWAP(state);
+        double vwap = OrderHelper.calculateBidVWAP(state);// this is not correct to be used
 
         // Buy if price is below VWAP and fewer than the max active orders
         if (price < vwap && activeOrders < MAX_ACTIVE_ORDERS) {
