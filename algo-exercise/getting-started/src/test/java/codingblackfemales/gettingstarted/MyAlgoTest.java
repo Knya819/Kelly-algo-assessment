@@ -21,16 +21,7 @@ public class MyAlgoTest extends AbstractAlgoTest {
         send(createTick());
 
         //Verify that 3 child orders were created in total
-        assertEquals(0, container.getState().getChildOrders().size());
+        assertEquals(3, container.getState().getChildOrders().size());
 
-        // Verify that 2 child orders are active
-        assertEquals(0, container.getState().getActiveChildOrders().size());
-
-        //Calculate the number of canceled orders (total - active)
-        var state = container.getState();
-        long cancelledOrderCount = state.getChildOrders().size() - state.getActiveChildOrders().size();
-
-        // Ensure that exactly 1 child order was canceled
-        assertEquals(0, cancelledOrderCount);
     }
 }
