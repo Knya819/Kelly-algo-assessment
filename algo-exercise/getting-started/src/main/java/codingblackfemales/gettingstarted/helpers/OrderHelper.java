@@ -102,6 +102,14 @@ public class OrderHelper {
             // VWAP calculation: Total price-volume product divided by total volume
             return totalPriceVolume / totalVolume;
         }
+            // Method to calculate the overall VWAP as an average of BidVWAP and AskVWAP
+                public static double calculateVWAP(SimpleAlgoState state) {
+                    double bidVWAP = calculateBidVWAP(state);  // Calculate VWAP for bids
+                    double askVWAP = calculateAskVWAP(state);  // Calculate VWAP for asks
+
+                    // Return the average of both bid and ask VWAP
+                    return (bidVWAP + askVWAP) / 2;
+                }
 
 
 
