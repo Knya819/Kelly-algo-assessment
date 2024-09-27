@@ -32,6 +32,7 @@ public class MyAlgoLogic implements AlgoLogic {
 
     @Override
     public Action evaluate(SimpleAlgoState state) {
+        
         // Initialize local bid and ask levels if empty
         if (localBidLevels.isEmpty()) {
             for (int i = 0; i < state.getBidLevels(); i++) {
@@ -53,21 +54,28 @@ public class MyAlgoLogic implements AlgoLogic {
             return manageOrdersAction;  // If any action is returned (cancel order), return it
         }
 
-        // Buy logic: Buy if the price is below BidVWAP and fewer than the max allowed active orders
-        double bidVwap = OrderHelper.calculateBidVWAP(state);
+        double bidTwap = OrderHelper.calculateBidTWAP(state);
+        double askTwap = OrderHelper.calculateAskTWAP(state);
+
 
         if (localBidLevels.isEmpty()) {
             logger.info("[MYALGO] No available bid levels, no action possible.");
             return NoAction.NoAction;
         }
 
+        if (localAskLevels.isEmpty()) {
+            logger.info("[MYALGO] No available ask levels, no action possible.");
+            return NoAction.NoAction;
+        }
+        // Buy logic: Buy if the price is below BidTWAP and fewer than the max allowed active orders
+
         if (state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
             BidLevel bestBid = localBidLevels.get(0);
             long price = bestBid.price;
             long quantity = bestBid.quantity;
 
-            if (price <= bidVwap) {
-                logger.info("[MYALGO] Placing buy order below BidVWAP: " + bidVwap + " at price: " + price);
+            if (price <= bidTwap) {
+                logger.info("[MYALGO] Placing buy order below BidTWAP: " + bidTwap + " at price: " + price);
                 Action action = new CreateChildOrder(Side.BUY, quantity, price);
 
                 // Track the buy price and quantity for profit calculation
@@ -82,21 +90,15 @@ public class MyAlgoLogic implements AlgoLogic {
             }
         }
 
-        // SELL Logic: Sell if the price is above AskVWAP and fewer than the max allowed active orders
-        double askVwap = OrderHelper.calculateAskVWAP(state);
-
-        if (localAskLevels.isEmpty()) {
-            logger.info("[MYALGO] No available ask levels, no action possible.");
-            return NoAction.NoAction;
-        }
+        // SELL Logic: Sell if the price is above AskTWAP and fewer than the max allowed active orders
 
         if (state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
             AskLevel bestAsk = localAskLevels.get(0);  // Get the best ask level
             long askPrice = bestAsk.price;
             long askQuantity = bestAsk.quantity;
 
-            if (askPrice >= askVwap) {
-                logger.info("[MYALGO] Placing sell order above AskVWAP: " + askVwap + " at price: " + askPrice);
+            if (askPrice >= askTwap) {
+                logger.info("[MYALGO] Placing sell order above AskTWAP: " + askTwap + " at price: " + askPrice);
                 Action action = new CreateChildOrder(Side.SELL, askQuantity, askPrice);
 
                 // Track the sell price and quantity for profit calculation
