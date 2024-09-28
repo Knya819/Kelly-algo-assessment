@@ -14,7 +14,7 @@ public class ImplementationShortfallStrategy implements ExecutionStrategy {
     private long decisionPrice = -1;
 
     @Override
-    public Action execute(SimpleAlgoState state, long quantity, long price, long filledQuantity) {
+    public Action execute(SimpleAlgoState state, List<BidLevel> bidLevels, List<AskLevel> askLevels) {
         if (decisionPrice == -1) {
             decisionPrice = state.getBidAt(0).price;
         }

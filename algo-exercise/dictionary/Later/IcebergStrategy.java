@@ -10,7 +10,7 @@ import messages.order.Side;
 public class IcebergStrategy implements ExecutionStrategy {
 
     @Override
-    public Action execute(SimpleAlgoState state, long quantity, long price, long filledQuantity) {
+    public Action execute(SimpleAlgoState state, List<BidLevel> bidLevels, List<AskLevel> askLevels) {
         // Iceberg logic: reveal 10% of the total order size
         long remainingQuantity = quantity - filledQuantity;
         

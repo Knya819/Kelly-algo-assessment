@@ -1,11 +1,12 @@
 package codingblackfemales.gettingstarted.strategies;
 
 import codingblackfemales.action.Action;
+import codingblackfemales.sotw.marketdata.AskLevel;
+import codingblackfemales.sotw.marketdata.BidLevel;
 import codingblackfemales.sotw.SimpleAlgoState;
-import codingblackfemales.action.CreateChildOrder;
-import messages.order.Side;
 
+import java.util.List;
 
 public interface ExecutionStrategy {
-    Action execute(SimpleAlgoState state, long quantity, long price, long filledQuantity);
+    Action execute(SimpleAlgoState state, List<BidLevel> localBidLevels, List<AskLevel> localAskLevels);
 }

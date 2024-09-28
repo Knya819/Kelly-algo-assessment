@@ -17,7 +17,7 @@ public class POVStrategy implements ExecutionStrategy {
     private static final Logger logger = LoggerFactory.getLogger(POVStrategy.class);
 
     @Override
-    public Action execute(SimpleAlgoState state, long quantity, long price, long filledQuantity) {
+    public Action execute(SimpleAlgoState state, List<BidLevel> bidLevels, List<AskLevel> askLevels) {
         long totalMarketVolume = OrderHelper.calculateTotalVolume(state);
         long availableVolume = (totalMarketVolume * 5) / 100;  // 5% of market volume
 

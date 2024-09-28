@@ -8,6 +8,10 @@ import codingblackfemales.sotw.marketdata.AskLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
+
+
 public class OrderHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderHelper.class);
@@ -180,4 +184,80 @@ public class OrderHelper {
 
         return price >= lowerBound && price <= upperBound;
     }
+
+    // Method to calculate profit based on buy and sell totals
+    public static void calculateProfit(double buyTotal, double sellTotal) {
+        if (buyTotal > 0 || sellTotal > 0) {
+            double profit = sellTotal - buyTotal;
+            logger.info("[ORDERHELPER] Total Profit from the trades: " + sellTotal + " - " + buyTotal + " = " + profit);
+        } else {
+            logger.info("[ORDERHELPER] No trades were executed, no profit calculation possible.");
+        }
+    }
+
+    // Method to update bid levels by reducing quantity and removing fully filled levels
+    public static void updateBidLevels(List<BidLevel> bidLevels, long price, long filledQuantity) {
+        for (int i = 0; i < bidLevels.size(); i++) {
+            BidLevel bidLevel = bidLevels.get(i);
+            if (bidLevel.price == price) {
+                long remainingQuantity = bidLevel.quantity - filledQuantity;
+                if (remainingQuantity <= 0) {
+                    logger.info("[ORDERHELPER] Removing bid level at price: " + price + " as quantity " + filledQuantity + " is fully bought.");
+                    bidLevels.remove(i);  // Remove from the local copy
+                } else {
+                    bidLevel.quantity = remainingQuantity;  // Update the quantity locally
+                    logger.info("[ORDERHELPER] Updated bid level at price: " + price + ", remaining quantity: " + remainingQuantity);
+                }
+                break;  // Exit the loop once the level is updated or removed
+            }
+        }
+    }
+
+    // Method to update ask levels by reducing quantity and removing fully filled levels
+    public static void updateAskLevels(List<AskLevel> askLevels, long price, long filledQuantity) {
+        for (int i = 0; i < askLevels.size(); i++) {
+            AskLevel askLevel = askLevels.get(i);
+            if (askLevel.price == price) {
+                long remainingQuantity = askLevel.quantity - filledQuantity;
+                if (remainingQuantity <= 0) {
+                    logger.info("[ORDERHELPER] Removing ask level at price: " + price + " as quantity " + filledQuantity + " is fully sold.");
+                    askLevels.remove(i);  // Remove from the local copy
+                } else {
+                    askLevel.quantity = remainingQuantity;  // Update the quantity locally
+                    logger.info("[ORDERHELPER] Updated ask level at price: " + price + ", remaining quantity: " + remainingQuantity);
+                }
+                break;  // Exit the loop once the level is updated or removed
+            }
+        }
+    }
+
+    // Utility method to format the order book for better logging
+        public static String formatOrderBook(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(String.format("%-15s %-15s\n", "|----BID-----|", "|----ASK-----|"));  // Header for bid and ask columns
+
+        // Determine the maximum number of levels to display (whichever is greater, bid or ask levels)
+        int maxLevels = Math.max(bidLevels.size(), askLevels.size());
+
+        // Loop through both bid and ask levels
+        for (int i = 0; i < maxLevels; i++) {
+            String bidStr = i < bidLevels.size() 
+                ? String.format("%6d @ %6d", bidLevels.get(i).quantity, bidLevels.get(i).price) 
+                : "               ";  // Empty space if there are no more bid levels
+
+            String askStr = i < askLevels.size() 
+                ? String.format("%6d @ %6d", askLevels.get(i).quantity, askLevels.get(i).price) 
+                : "               ";  // Empty space if there are no more ask levels
+
+            // Append bid and ask levels side by side
+            sb.append(String.format("%-15s %-15s\n", bidStr, askStr));
+        }
+
+        return sb.toString();
 }
+
+}
+
+
+

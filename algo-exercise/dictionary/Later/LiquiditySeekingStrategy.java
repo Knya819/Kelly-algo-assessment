@@ -13,7 +13,7 @@ public class LiquiditySeekingStrategy implements ExecutionStrategy {
     private static final Logger logger = LoggerFactory.getLogger(LiquiditySeekingStrategy.class);
 
     @Override
-    public Action execute(SimpleAlgoState state, long quantity, long price, long filledQuantity) {
+    public Action execute(SimpleAlgoState state, List<BidLevel> bidLevels, List<AskLevel> askLevels) {
         long liquidityAtBid = state.getBidAt(0).getQuantity();
 
         if (liquidityAtBid > quantity) {

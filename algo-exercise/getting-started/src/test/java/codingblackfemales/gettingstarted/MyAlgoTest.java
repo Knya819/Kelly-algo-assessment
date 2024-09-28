@@ -39,5 +39,30 @@ public class MyAlgoTest extends AbstractAlgoTest {
         // Check that our algo state was updated to reflect fills
         assertEquals(0, filledQuantity);
     }
+
+    // @Test
+    // public void testBuyOrderPlaced() throws Exception {
+    //     // Simulate market data that should trigger a buy order
+    //     send(createTick());
+
+    //     // Verify the state of child orders
+    //     var orders = container.getState().getChildOrders();
+
+    //     // Check if the first order is a buy order
+    //     assertEquals(Side.BUY, orders.get(0).getSide());
+    // }
+
+    // @Test
+    // public void testSellOrderPlaced() throws Exception {
+    //     // Simulate market data that should trigger a sell order
+    //     send(createTick());
+
+    //     // Verify the state of child orders
+    //     var orders = container.getState().getChildOrders();
+
+    //     // Check if the first order is a sell order
+    //     assertEquals(Side.SELL, orders.get(0).getSide());
+    // }
+
 }
 

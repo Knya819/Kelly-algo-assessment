@@ -1,21 +1,25 @@
 package codingblackfemales.gettingstarted;
 
 import codingblackfemales.algo.AlgoLogic;
+import codingblackfemales.marketdata.impl.SimpleFileMarketDataProvider;
+import codingblackfemales.marketdata.api.MarketDataMessage;
+import codingblackfemales.marketdata.api.MarketDataEncoder;
+import codingblackfemales.marketdata.api.MarketDataProvider;
+import codingblackfemales.service.MarketDataService;
+import org.agrona.DirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * This test plugs together all of the infrastructure, including the order book (which you can trade against)
  * and the market data feed.
- *
- * If your algo adds orders to the book, they will reflect in your market data coming back from the order book.
- *
- * If you cross the srpead (i.e. you BUY an order with a price which is == or > askPrice()) you will match, and receive
- * a fill back into your order from the order book (visible from the algo in the childOrders of the state object.
- *
- * If you cancel the order your child order will show the order status as cancelled in the childOrders of the state object.
- *
  */
 public class MyAlgoBackTest extends AbstractAlgoBackTest {
+
+    private MarketDataProvider marketDataProvider;
+    private MarketDataEncoder encoder;
 
     @Override
     public AlgoLogic createAlgoLogic() {
@@ -24,22 +28,40 @@ public class MyAlgoBackTest extends AbstractAlgoBackTest {
 
     @Test
     public void testExampleBackTest() throws Exception {
-        //create a sample market data tick....
-        send(createTick());
+        // Initialize the market data provider to read from the JSON file
+        marketDataProvider = new SimpleFileMarketDataProvider("src/test/java/codingblackfemales/gettingstarted/marketdatatest.json");
+        encoder = new MarketDataEncoder();
 
-        //ADD asserts when you have implemented your algo logic
-        //assertEquals(container.getState().getChildOrders().size(), 3);
+        // Retrieve the first tick (market data) from the file
+        MarketDataMessage tick = marketDataProvider.poll();
 
-        //when: market data moves towards us
-        send(createTick2());
+        // Encode the market data message
+        UnsafeBuffer encodedTick = encoder.encode(tick);
 
-        //then: get the state
+        // Send the encoded tick to the backtest using onMessage
+        send(encodedTick);
+
+        // When: Market data moves towards us, retrieve the next tick
+        MarketDataMessage tick2 = marketDataProvider.poll();
+        UnsafeBuffer encodedTick2 = encoder.encode(tick2);
+        assertEquals(0, container.getState().getChildOrders().size());
+
+        // Simulate the next market data movement
+        send(encodedTick2);
+
+        // Then: Retrieve the current state of the algorithm
         var state = container.getState();
 
-        //Check things like filled quantity, cancelled order count etc....
-        //long filledQuantity = state.getChildOrders().stream().map(ChildOrder::getFilledQuantity).reduce(Long::sum).get();
-        //and: check that our algo state was updated to reflect our fills when the market data
-        //assertEquals(225, filledQuantity);
+        // Example assertions
+        // long filledQuantity = state.getChildOrders().stream().map(ChildOrder::getFilledQuantity).reduce(Long::sum).get();
+        // assertEquals(225, filledQuantity);
     }
 
+    // Override send to match the base class method signature (DirectBuffer) and call onMessage
+    @Override
+    public void send(DirectBuffer tick) {
+        if (tick != null) {
+            container.onMessage(tick);  // Call onMessage to process the market data
+        }
+    }
 }

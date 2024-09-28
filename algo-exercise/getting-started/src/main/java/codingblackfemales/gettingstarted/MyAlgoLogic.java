@@ -5,8 +5,8 @@ import codingblackfemales.action.NoAction;
 import codingblackfemales.action.CreateChildOrder;
 import codingblackfemales.sotw.marketdata.AskLevel;
 import codingblackfemales.sotw.marketdata.BidLevel;
-import codingblackfemales.algo.AlgoLogic;
 import codingblackfemales.sotw.SimpleAlgoState;
+import codingblackfemales.algo.AlgoLogic;
 import codingblackfemales.gettingstarted.helpers.OrderHelper;
 import codingblackfemales.gettingstarted.helpers.OrderManager;
 import messages.order.Side;
@@ -15,6 +15,20 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+
+/**
+ *TO DO
+ *1) make sure OrderManager is comprehensive enough to handle all the edge cases
+ * like stale orders, partial fills, etc.
+ * 2) Consider enhancing this method by integrating profit/loss 
+ * 3) call state.getActiveChildOrders().size() in the helper
+ * 4)sell first, then buy, or balance them or handle both simultaneously
+ * I can just supose that we have a specific buject or we are in a certain position ~(long short)
+ * 5) find a solution for MAX_ACTIVE_ORDERS
+ * 6)Consider adding logic to handle edge cases like what happens when no orders can be placed ,This could include a strategy for waiting, changing tactics, or even exiting the market temporarily.
+ */
+
+
 
 public class MyAlgoLogic implements AlgoLogic {
 
@@ -25,14 +39,12 @@ public class MyAlgoLogic implements AlgoLogic {
     private List<AskLevel> localAskLevels = new ArrayList<>();  // Local copy of ask levels
 
     // Variables to track buy and sell information for profit calculation
-    private long buyPrice = 0;
-    private long buyQuantity = 0;
-    private long sellPrice = 0;
-    private long sellQuantity = 0;
+    private double buyTotal = 0;
+    private double sellTotal = 0;
 
     @Override
     public Action evaluate(SimpleAlgoState state) {
-        
+
         // Initialize local bid and ask levels if empty
         if (localBidLevels.isEmpty()) {
             for (int i = 0; i < state.getBidLevels(); i++) {
@@ -46,9 +58,9 @@ public class MyAlgoLogic implements AlgoLogic {
         }
 
         // Log the state of the order book
-        logger.info("[MYALGO] The state of the order book is:\n" + formatOrderBook());
+        logger.info("[MYALGO] The state of the order book is:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
 
-        // Step 1: Use OrderManager to handle fully filled orders or too many active orders
+        //Use OrderManager to handle fully filled orders or too many active orders
         Action manageOrdersAction = OrderManager.manageOrders(state);
         if (manageOrdersAction != null) {
             return manageOrdersAction;  // If any action is returned (cancel order), return it
@@ -56,7 +68,6 @@ public class MyAlgoLogic implements AlgoLogic {
 
         double bidTwap = OrderHelper.calculateBidTWAP(state);
         double askTwap = OrderHelper.calculateAskTWAP(state);
-
 
         if (localBidLevels.isEmpty()) {
             logger.info("[MYALGO] No available bid levels, no action possible.");
@@ -67,8 +78,8 @@ public class MyAlgoLogic implements AlgoLogic {
             logger.info("[MYALGO] No available ask levels, no action possible.");
             return NoAction.NoAction;
         }
-        // Buy logic: Buy if the price is below BidTWAP and fewer than the max allowed active orders
 
+        // Buy logic: Buy if the price is below BidTWAP and fewer than the max allowed active orders
         if (state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
             BidLevel bestBid = localBidLevels.get(0);
             long price = bestBid.price;
@@ -78,20 +89,18 @@ public class MyAlgoLogic implements AlgoLogic {
                 logger.info("[MYALGO] Placing buy order below BidTWAP: " + bidTwap + " at price: " + price);
                 Action action = new CreateChildOrder(Side.BUY, quantity, price);
 
-                // Track the buy price and quantity for profit calculation
-                buyPrice = price;
-                buyQuantity = quantity;
+                // Accumulate the buy total
+                buyTotal += price * quantity;
 
-                // Update the local bid levels
-                updateLocalBidLevels(price, quantity);
-                logger.info("[MYALGO] Updated local order book state:\n" + formatOrderBook());
+                // Update the local bid levels using OrderHelper
+                OrderHelper.updateBidLevels(localBidLevels, price, quantity);
+                logger.info("[MYALGO] Updated local order book state:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
 
                 return action;
             }
         }
 
         // SELL Logic: Sell if the price is above AskTWAP and fewer than the max allowed active orders
-
         if (state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
             AskLevel bestAsk = localAskLevels.get(0);  // Get the best ask level
             long askPrice = bestAsk.price;
@@ -101,81 +110,21 @@ public class MyAlgoLogic implements AlgoLogic {
                 logger.info("[MYALGO] Placing sell order above AskTWAP: " + askTwap + " at price: " + askPrice);
                 Action action = new CreateChildOrder(Side.SELL, askQuantity, askPrice);
 
-                // Track the sell price and quantity for profit calculation
-                sellPrice = askPrice;
-                sellQuantity = askQuantity;
+                // Accumulate the sell total
+                sellTotal += askPrice * askQuantity;
 
-                // Update the local ask levels
-                updateLocalAskLevels(askPrice, askQuantity);
-                logger.info("[MYALGO] Updated local order book state:\n" + formatOrderBook());
-
-                // Calculate profit after sell
-                calculateProfit();
+                // Update the local ask levels using OrderHelper
+                OrderHelper.updateAskLevels(localAskLevels, askPrice, askQuantity);
+                logger.info("[MYALGO] Updated local order book state:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
 
                 return action;
             }
         }
 
+        // Call the OrderHelper to calculate profit at the end of the evaluation
+        OrderHelper.calculateProfit(buyTotal, sellTotal);
+
         logger.info("[MYALGO] No action required, done for now.");
         return NoAction.NoAction;
-    }
-
-  
-
-    // Method to update local bid levels by reducing quantity and removing fully filled levels
-    private void updateLocalBidLevels(long price, long filledQuantity) {
-        for (int i = 0; i < localBidLevels.size(); i++) {
-            BidLevel bidLevel = localBidLevels.get(i);
-            if (bidLevel.price == price) {
-                long remainingQuantity = bidLevel.quantity - filledQuantity;
-                if (remainingQuantity <= 0) {
-                    logger.info("[MYALGO] Removing bid level at price: " + price + " as quantity " + filledQuantity + " is fully bought.");
-                    localBidLevels.remove(i);  // Remove from the local copy
-                } else {
-                    bidLevel.quantity = remainingQuantity;  // Update the quantity locally
-                    logger.info("[MYALGO] Updated bid level at price: " + price + ", remaining quantity: " + remainingQuantity);
-                }
-                break;  // Exit the loop once the level is updated or removed
-            }
-        }
-    }
-
-    // Method to update local ask levels by reducing quantity and removing fully filled levels
-    private void updateLocalAskLevels(long price, long filledQuantity) {
-        for (int i = 0; i < localAskLevels.size(); i++) {
-            AskLevel askLevel = localAskLevels.get(i);
-            if (askLevel.price == price) {
-                long remainingQuantity = askLevel.quantity - filledQuantity;
-                if (remainingQuantity <= 0) {
-                    logger.info("[MYALGO] Removing ask level at price: " + price + " as quantity " + filledQuantity + " is fully sold.");
-                    localAskLevels.remove(i);  // Remove from the local copy
-                } else {
-                    askLevel.quantity = remainingQuantity;  // Update the quantity locally
-                    logger.info("[MYALGO] Updated ask level at price: " + price + ", remaining quantity: " + remainingQuantity);
-                }
-                break;  // Exit the loop once the level is updated or removed
-            }
-        }
-    }
-
-    // Utility method to format the order book for better logging
-    private String formatOrderBook() {
-        StringBuilder sb = new StringBuilder("|----BID-----|\n");
-        for (BidLevel level : localBidLevels) {
-            sb.append(String.format("%6d @ %6d\n", level.quantity, level.price));
-        }
-        sb.append("|----ASK-----|\n");
-        for (AskLevel level : localAskLevels) {
-            sb.append(String.format("%6d @ %6d\n", level.quantity, level.price));
-        }
-        return sb.toString();
-    }
-
-      // Profit calculation method
-    private void calculateProfit() {
-        long buyTotal = buyPrice * buyQuantity;
-        long sellTotal = sellPrice * sellQuantity;
-        long profit = sellTotal - buyTotal;
-        logger.info("[MYALGO] Profit from the trade: " + profit);
     }
 }
