@@ -144,12 +144,49 @@ public class OrderHelper {
             .sum();
     }
 
-    // Calculate market volatility based on the spread between bid and ask prices
+    // Calculate market volatility based on the spread between all bid and ask prices
     public static double calculateMarketVolatility(SimpleAlgoState state) {
-        double bestBid = state.getBidAt(0).price;
-        double bestAsk = state.getAskAt(0).price;
-        return Math.abs(bestAsk - bestBid) / bestBid;
+        int bidSize = state.getBidLevels();
+        int askSize = state.getAskLevels();
+        
+        // Ensure there are both bid and ask prices available
+        if (bidSize == 0 || askSize == 0) {
+            throw new IllegalStateException("No bid or ask prices available in the order book.");
+        }
+
+        double totalSpread = 0.0;
+        int count = 0;
+
+        // Determine how many levels to compare (use the smaller of the two)
+        int levelsToCompare = Math.min(bidSize, askSize);
+
+        // Iterate through each bid and ask level, calculating the spread
+        for (int i = 0; i < levelsToCompare; i++) {
+            BidLevel bidLevel = state.getBidAt(i);
+            AskLevel askLevel = state.getAskAt(i);
+
+            if (bidLevel == null || askLevel == null) {
+                break; // Exit if we run out of valid levels to compare
+            }
+
+            double bidPrice = bidLevel.price;
+            double askPrice = askLevel.price;
+
+            // Avoid division by zero
+            if (bidPrice == 0) {
+                throw new ArithmeticException("Bid price is zero at level " + i);
+            }
+
+            // Calculate the spread between the current bid and ask level
+            double spread = Math.abs(askPrice - bidPrice) / bidPrice;
+            totalSpread += spread;
+            count++;
+        }
+
+        // Return the average spread as a measure of market volatility
+        return count > 0 ? totalSpread / count : 0;
     }
+
 
     // Calculate total order size based on child orders
     public static long calculateTotalOrderSize(SimpleAlgoState state) {
@@ -255,7 +292,7 @@ public class OrderHelper {
         }
 
         return sb.toString();
-}
+    }
 
 }
 
