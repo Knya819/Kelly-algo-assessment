@@ -14,13 +14,13 @@ public class OrderManager {
 
     // Method to handle both fully filled orders and excess active orders
     public static Action manageOrders(SimpleAlgoState state) {
-        // Step 1: Check for fully filled orders
+        // Check for fully filled orders
         Action cancelFilledOrder = cancelFilledOrder(state);
         if (cancelFilledOrder != null) {
             return cancelFilledOrder;
         }
 
-        // Step 2: Check if there are too many active orders
+        // Check if there are too many active orders
         Action cancelOldest = cancelOldestOrder(state);
         if (cancelOldest != null) {
             return cancelOldest;
