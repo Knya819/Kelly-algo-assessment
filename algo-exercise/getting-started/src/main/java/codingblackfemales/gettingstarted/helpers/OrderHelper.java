@@ -228,7 +228,7 @@ public class OrderHelper {
             double profit = sellTotal - buyTotal;
             logger.info("[ORDERHELPER] Total Profit from the trades: " + sellTotal + " - " + buyTotal + " = " + profit);
         } else {
-            logger.info("[ORDERHELPER] No trades were executed, no profit calculation possible.");
+            logger.info("[ORDERHELPER] No trades were executed, no profit calculation possible");
         }
     }
 
@@ -239,7 +239,7 @@ public class OrderHelper {
             if (bidLevel.price == price) {
                 long remainingQuantity = bidLevel.quantity - filledQuantity;
                 if (remainingQuantity <= 0) {
-                    logger.info("[ORDERHELPER] Removing bid level at price: " + price + " as quantity " + filledQuantity + " is fully bought.");
+                    logger.info("[ORDERHELPER] Removing bid level at price: " + price + " as quantity " + filledQuantity + " is fully bought");
                     bidLevels.remove(i);  // Remove from the local copy
                 } else {
                     bidLevel.quantity = remainingQuantity;  // Update the quantity locally
@@ -281,11 +281,11 @@ public class OrderHelper {
         for (int i = 0; i < maxLevels; i++) {
             String bidStr = i < bidLevels.size() 
                 ? String.format("%6d @ %6d", bidLevels.get(i).quantity, bidLevels.get(i).price) 
-                : "               ";  // Empty space if there are no more bid levels
+                : "       -       ";  // Empty space if there are no more bid levels, to chango to -
 
             String askStr = i < askLevels.size() 
                 ? String.format("%6d @ %6d", askLevels.get(i).quantity, askLevels.get(i).price) 
-                : "               ";  // Empty space if there are no more ask levels
+                : "       -       ";  // Empty space if there are no more ask levels
 
             // Append bid and ask levels side by side
             sb.append(String.format("%-15s %-15s\n", bidStr, askStr));
