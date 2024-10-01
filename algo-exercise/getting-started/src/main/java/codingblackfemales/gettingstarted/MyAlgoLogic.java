@@ -2,123 +2,75 @@ package codingblackfemales.gettingstarted;
 
 import codingblackfemales.action.Action;
 import codingblackfemales.action.NoAction;
-import codingblackfemales.action.CreateChildOrder;
+import codingblackfemales.algo.AlgoLogic;
+import codingblackfemales.sotw.SimpleAlgoState;
 import codingblackfemales.sotw.marketdata.AskLevel;
 import codingblackfemales.sotw.marketdata.BidLevel;
-import codingblackfemales.sotw.SimpleAlgoState;
-import codingblackfemales.algo.AlgoLogic;
+import codingblackfemales.gettingstarted.strategies.ExecutionStrategy;
+import codingblackfemales.gettingstarted.strategies.TWAPStrategy;
+import codingblackfemales.gettingstarted.strategies.VWAPStrategy;
 import codingblackfemales.gettingstarted.helpers.OrderHelper;
-import codingblackfemales.gettingstarted.helpers.OrderManager;
-import messages.order.Side;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * MyAlgoLogic implementing TWAP strategy.
- */
 public class MyAlgoLogic implements AlgoLogic {
 
     private static final Logger logger = LoggerFactory.getLogger(MyAlgoLogic.class);
-    private static final long MAX_ACTIVE_ORDERS = 101; // Maximum active orders (can be made dynamic)
 
-    private List<BidLevel> localBidLevels = new ArrayList<>();  // Local copy of bid levels
-    private List<AskLevel> localAskLevels = new ArrayList<>();  // Local copy of ask levels
-
-    // Variables to track buy and sell totals for profit calculation
-    private double buyTotal = 0;
-    private double sellTotal = 0;
+    // Instantiate both TWAP and VWAP strategies
+    private final ExecutionStrategy twapStrategy = new TWAPStrategy();
+    private final ExecutionStrategy vwapStrategy = new VWAPStrategy();
 
     @Override
     public Action evaluate(SimpleAlgoState state) {
 
-        // Initialize local bid and ask levels if empty
-        if (localBidLevels.isEmpty()) {
-            for (int i = 0; i < state.getBidLevels(); i++) {  // Assuming this returns the number of bid levels
-                BidLevel bidLevel = state.getBidAt(i);  // Retrieve each BidLevel
-                if (bidLevel != null) {
-                    localBidLevels.add(bidLevel);  // Add BidLevel to the list
-                }
-            }
-        }
-        if (localAskLevels.isEmpty()) {
-            for (int i = 0; i < state.getAskLevels(); i++) {  // Assuming this returns the number of ask levels
-                AskLevel askLevel = state.getAskAt(i);  // Retrieve each AskLevel
-                if (askLevel != null) {
-                    localAskLevels.add(askLevel);  // Add AskLevel to the list
-                }
+        // Create local copies of bid and ask levels
+        List<BidLevel> localBidLevels = new ArrayList<>();
+        List<AskLevel> localAskLevels = new ArrayList<>();
+
+        // Retrieve bid levels
+        for (int i = 0; i < state.getBidLevels(); i++) {
+            BidLevel bidLevel = state.getBidAt(i);
+            if (bidLevel != null) {
+                localBidLevels.add(bidLevel);  // Add the retrieved bid level to the local list
             }
         }
 
-        // Log the state of the order book
-        logger.info("[MYALGO] The state of the order book is:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
-
-        // Use OrderManager to handle fully filled orders or too many active orders
-        Action manageOrdersAction = OrderManager.manageOrders(state);
-        if (manageOrdersAction != null) {
-            return manageOrdersAction;  // If any action is returned (cancel order), return it
-        }
-
-        // Calculate TWAP for bids and asks
-        double bidTwap = OrderHelper.calculateBidTWAP(state);
-        double askTwap = OrderHelper.calculateAskTWAP(state);
-
-        // Buy logic: Buy if the price is below BidTWAP and fewer than the max allowed active orders
-        if (state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
-            if (!localBidLevels.isEmpty()) {
-                BidLevel bestBid = localBidLevels.get(0);
-                long price = bestBid.price;
-                long quantity = bestBid.quantity;
-
-                if (price <= bidTwap) {
-                    logger.info("[MYALGO] Placing buy order below BidTWAP: " + bidTwap + " at price: " + price);
-                    Action action = new CreateChildOrder(Side.BUY, quantity, price);
-
-                    // Accumulate the buy total
-                    buyTotal += price * quantity;
-
-                    // Update the local bid levels using OrderHelper
-                    OrderHelper.updateBidLevels(localBidLevels, price, quantity);
-                    logger.info("[MYALGO] Updated local order book state:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
-
-                    return action;
-                }
-            } else {
-                logger.info("[MYALGO] No available bid levels, no buy action possible.");
+        // Retrieve ask levels
+        for (int i = 0; i < state.getAskLevels(); i++) {
+            AskLevel askLevel = state.getAskAt(i);
+            if (askLevel != null) {
+                localAskLevels.add(askLevel);  // Add the retrieved ask level to the local list
             }
         }
 
-        // Sell logic: Sell if the price is above AskTWAP and fewer than the max allowed active orders
-        if (state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
-            if (!localAskLevels.isEmpty()) {
-                AskLevel bestAsk = localAskLevels.get(0);  // Get the best ask level
-                long askPrice = bestAsk.price;
-                long askQuantity = bestAsk.quantity;
+        // Determine the market volatility
+        double marketVolatility = OrderHelper.calculateMarketVolatility(state);
+        double volatilityThreshold = 0.1;  // Example threshold to choose between TWAP and VWAP
+        logger.info("[MyAlgoLogic] the marketVolatility is "+  marketVolatility);
 
-                if (askPrice >= askTwap) {
-                    logger.info("[MYALGO] Placing sell order above AskTWAP: " + askTwap + " at price: " + askPrice);
-                    Action action = new CreateChildOrder(Side.SELL, askQuantity, askPrice);
-
-                    // Accumulate the sell total
-                    sellTotal += askPrice * askQuantity;
-
-                    // Update the local ask levels using OrderHelper
-                    OrderHelper.updateAskLevels(localAskLevels, askPrice, askQuantity);
-                    logger.info("[MYALGO] Updated local order book state:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
-
-                    return action;
-                }
-            } else {
-                logger.info("[MYALGO] No available ask levels, no sell action possible.");
-            }
+        // Choose the strategy based on market conditions
+        ExecutionStrategy selectedStrategy;
+        if (marketVolatility < volatilityThreshold) { // i put < because of the mismatch between bid and ask. if you fix that change here aswell
+            logger.info("[MyAlgoLogic] Market volatility is high, selecting VWAP strategy.");
+            selectedStrategy = vwapStrategy;  // High volatility -> VWAP
+        } else {
+            logger.info("[MyAlgoLogic] Market volatility is low, selecting TWAP strategy.");
+            selectedStrategy = twapStrategy;  // Low volatility -> TWAP
         }
 
-        // Call the OrderHelper to calculate profit at the end of the evaluation
-        OrderHelper.calculateProfit(buyTotal, sellTotal);
+        // Execute the selected strategy
+        Action action = selectedStrategy.execute(state);
 
-        logger.info("[MYALGO] No action required, done for now.");
-        return NoAction.NoAction;
+        // // Return the action or NoAction if nothing is returned
+        // if (action == null) {
+        //     logger.info("[MyAlgoLogic] No action required.");
+        //     return new NoAction();  // Or return NoAction.INSTANCE if it's a singleton
+        // }
+
+        return action;
     }
 }
