@@ -57,19 +57,19 @@ public class TWAPStrategy implements ExecutionStrategy {
         // Buy logic: Buy if the price is below BidTWAP and fewer than the max allowed active orders
         if (state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
             BidLevel bestBid = localBidLevels.get(0);
-            long price = bestBid.price;
-            long quantity = bestBid.quantity;
+            long bidPrice = bestBid.price;
+            long bidQuantity = bestBid.quantity;
 
-            logger.info("[TWAPStrategy] Checking buy logic: Bid Price = " + price + ", Bid TWAP = " + bidTwap);
-            if (price <= bidTwap) {
-                logger.info("[TWAPStrategy] Placing buy order below Bid TWAP: " + bidTwap + " at price: " + price);
-                Action action = new CreateChildOrder(Side.BUY, quantity, price);
+            logger.info("[TWAPStrategy] Checking buy logic: Bid Price = " + bidPrice + ", Bid TWAP = " + bidTwap);
+            if (bidPrice <= bidTwap) {
+                logger.info("[TWAPStrategy] Placing buy order below Bid TWAP: " + bidTwap + " at price: " + bidPrice);
+                Action action = new CreateChildOrder(Side.BUY, bidQuantity, bidPrice);
 
                 // Accumulate the buy total
-                buyTotal += price * quantity;
+                buyTotal += bidPrice * bidQuantity;
 
                 // Update the local bid levels using OrderHelper
-                OrderHelper.updateBidLevels(localBidLevels, price, quantity);
+                OrderHelper.updateBidLevels(localBidLevels, bidPrice, bidQuantity);
                 logger.info("[TWAPStrategy] Updated local order book state after buy:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
 
                 logger.info("[TWAPStrategy] Active orders count after buy: " + state.getActiveChildOrders().size());
