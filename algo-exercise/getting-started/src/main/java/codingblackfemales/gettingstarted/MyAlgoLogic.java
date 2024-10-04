@@ -24,10 +24,6 @@ public class MyAlgoLogic implements AlgoLogic {
 
     private static final Logger logger = LoggerFactory.getLogger(MyAlgoLogic.class);
 
-    // Define parameters for strategies
-    private static final long ORDER_SIZE = 1000; // Example order size
-    private static final double SOME_PARAMETER = 0.1; // Example double parameter
-
     // Instantiate strategies with required parameters
     private final ExecutionStrategy twapStrategy = new TWAPStrategy();
     private final ExecutionStrategy vwapStrategy = new VWAPStrategy();
