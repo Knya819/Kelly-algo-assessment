@@ -9,6 +9,10 @@ import codingblackfemales.sotw.marketdata.BidLevel;
 import codingblackfemales.gettingstarted.strategies.ExecutionStrategy;
 import codingblackfemales.gettingstarted.strategies.TWAPStrategy;
 import codingblackfemales.gettingstarted.strategies.VWAPStrategy;
+import codingblackfemales.gettingstarted.strategies.ImplementationShortfallStrategy;
+import codingblackfemales.gettingstarted.strategies.LiquiditySeekingStrategy;
+import codingblackfemales.gettingstarted.strategies.IcebergStrategy;
+import codingblackfemales.gettingstarted.strategies.POVStrategy;
 import codingblackfemales.gettingstarted.helpers.OrderHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,13 +24,20 @@ public class MyAlgoLogic implements AlgoLogic {
 
     private static final Logger logger = LoggerFactory.getLogger(MyAlgoLogic.class);
 
-    // Instantiate both TWAP and VWAP strategies
+    // Define parameters for strategies
+    private static final long ORDER_SIZE = 1000; // Example order size
+    private static final double SOME_PARAMETER = 0.1; // Example double parameter
+
+    // Instantiate strategies with required parameters
     private final ExecutionStrategy twapStrategy = new TWAPStrategy();
     private final ExecutionStrategy vwapStrategy = new VWAPStrategy();
+    private final ExecutionStrategy isStrategy = new ImplementationShortfallStrategy();
+    private final ExecutionStrategy liquiditySeekingStrategy = new LiquiditySeekingStrategy();
+    private final ExecutionStrategy icebergStrategy = new IcebergStrategy();
+    private final ExecutionStrategy povStrategy = new POVStrategy();
 
     @Override
     public Action evaluate(SimpleAlgoState state) {
-
         // Create local copies of bid and ask levels
         List<BidLevel> localBidLevels = new ArrayList<>();
         List<AskLevel> localAskLevels = new ArrayList<>();
@@ -35,7 +46,7 @@ public class MyAlgoLogic implements AlgoLogic {
         for (int i = 0; i < state.getBidLevels(); i++) {
             BidLevel bidLevel = state.getBidAt(i);
             if (bidLevel != null) {
-                localBidLevels.add(bidLevel);  // Add the retrieved bid level to the local list
+                localBidLevels.add(bidLevel);
             }
         }
 
@@ -43,34 +54,60 @@ public class MyAlgoLogic implements AlgoLogic {
         for (int i = 0; i < state.getAskLevels(); i++) {
             AskLevel askLevel = state.getAskAt(i);
             if (askLevel != null) {
-                localAskLevels.add(askLevel);  // Add the retrieved ask level to the local list
+                localAskLevels.add(askLevel);
             }
         }
 
-        // Determine the market volatility
-        double marketVolatility = OrderHelper.calculateMarketVolatility(state);
-        double volatilityThreshold = 0.1;  // Example threshold to choose between TWAP and VWAP
-        logger.info("[MyAlgoLogic] the marketVolatility is "+  marketVolatility);
-
-        // Choose the strategy based on market conditions
-        ExecutionStrategy selectedStrategy;
-        if (marketVolatility < volatilityThreshold) { // i put < because of the mismatch between bid and ask. if you fix that change here aswell
-            logger.info("[MyAlgoLogic] Market volatility is high, selecting VWAP strategy.");
-            selectedStrategy = vwapStrategy;  // High volatility -> VWAP
-        } else {
-            logger.info("[MyAlgoLogic] Market volatility is low, selecting TWAP strategy.");
-            selectedStrategy = twapStrategy;  // Low volatility -> TWAP
-        }
+        // Select execution strategy based on market conditions
+        ExecutionStrategy selectedStrategy = selectExecutionStrategy(state);
 
         // Execute the selected strategy
         Action action = selectedStrategy.execute(state);
 
-        // // Return the action or NoAction if nothing is returned
-        // if (action == null) {
-        //     logger.info("[MyAlgoLogic] No action required.");
-        //     return new NoAction();  // Or return NoAction.INSTANCE if it's a singleton
-        // }
+        return action != null ? action : new NoAction(); // Return action or NoAction if null
+    }
 
-        return action;
+    /**
+     * Selects the execution strategy based on market conditions and the current state.
+     * 
+     * @param state the current market state
+     * @return the selected ExecutionStrategy
+     */
+    public ExecutionStrategy selectExecutionStrategy(SimpleAlgoState state) {
+        double marketVolatility = OrderHelper.calculateMarketVolatility(state);
+        double volumeThreshold = 0.05;
+        long largeOrderSizeThreshold = 1000;  // Example threshold for large orders
+
+        logger.info("[SelectStrategy] Evaluating market conditions for strategy selection...");
+
+        // Select IS if the spread between decision price and current price is large
+        if (Math.abs(state.getBidAt(0).getPrice() - state.getAskAt(0).getPrice()) > 10) {
+            logger.info("[SelectStrategy] Selected IS Strategy based on large spread.");
+            return isStrategy;
+        }
+
+        // Select Liquidity Seeking if there is high liquidity at the best bid/ask
+        if (state.getBidAt(0).getQuantity() > 500 || state.getAskAt(0).getQuantity() > 500) {
+            logger.info("[SelectStrategy] Selected Liquidity Seeking Strategy based on high liquidity.");
+            return liquiditySeekingStrategy;
+        }
+
+        // Select Iceberg if the order size is large
+        if (OrderHelper.calculateTotalOrderSize(state) > largeOrderSizeThreshold) {
+            logger.info("[SelectStrategy] Selected Iceberg Strategy based on large order size.");
+            return icebergStrategy;
+        }
+
+        // Default to existing logic based on volatility for TWAP, VWAP, and POV
+        if (marketVolatility > volumeThreshold) {
+            logger.info("[SelectStrategy] Selected VWAP Strategy based on high market volatility.");
+            return vwapStrategy;
+        } else if (marketVolatility < Math.round(volumeThreshold * 0.4)) {
+            logger.info("[SelectStrategy] Selected POV Strategy based on low market volatility.");
+            return povStrategy;
+        } else {
+            logger.info("[SelectStrategy] Selected TWAP Strategy by default.");
+            return twapStrategy;
+        }
     }
 }
