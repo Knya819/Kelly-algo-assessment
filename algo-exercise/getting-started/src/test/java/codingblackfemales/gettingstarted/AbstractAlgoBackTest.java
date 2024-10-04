@@ -12,6 +12,7 @@ import codingblackfemales.orderbook.channel.MarketDataChannel;
 import codingblackfemales.orderbook.channel.OrderChannel;
 import codingblackfemales.orderbook.consumer.OrderBookInboundOrderConsumer;
 import codingblackfemales.sequencer.DefaultSequencer;
+import codingblackfemales.marketdata.impl.BidBookUpdateImpl;
 import codingblackfemales.sequencer.Sequencer;
 import codingblackfemales.sequencer.consumer.LoggingConsumer;
 import codingblackfemales.sequencer.marketdata.SequencerTestCase;
@@ -58,43 +59,57 @@ public abstract class AbstractAlgoBackTest extends SequencerTestCase {
 
     // Add this method to AbstractAlgoBackTest
     protected UnsafeBuffer createTickFromMarketData(MarketDataMessage marketDataMessage) {
-        // Assuming the MarketDataMessage contains bid and ask books
+    final MessageHeaderEncoder headerEncoder = new MessageHeaderEncoder();
+    final BookUpdateEncoder encoder = new BookUpdateEncoder();
 
-        final MessageHeaderEncoder headerEncoder = new MessageHeaderEncoder();
-        final BookUpdateEncoder encoder = new BookUpdateEncoder();
+    final ByteBuffer byteBuffer = ByteBuffer.allocateDirect(1024);
+    final UnsafeBuffer directBuffer = new UnsafeBuffer(byteBuffer);
 
-        final ByteBuffer byteBuffer = ByteBuffer.allocateDirect(1024);
-        final UnsafeBuffer directBuffer = new UnsafeBuffer(byteBuffer);
+    encoder.wrapAndApplyHeader(directBuffer, 0, headerEncoder);
 
-        encoder.wrapAndApplyHeader(directBuffer, 0, headerEncoder);
+    if (marketDataMessage instanceof BookUpdateImpl) {
+        BookUpdateImpl bookUpdate = (BookUpdateImpl) marketDataMessage;
 
-        if (marketDataMessage instanceof BookUpdateImpl) {
-            BookUpdateImpl bookUpdate = (BookUpdateImpl) marketDataMessage;
+        // Set venue and instrument ID
+        encoder.venue(bookUpdate.venue());
+        encoder.instrumentId(bookUpdate.instrumentId());
+        encoder.source(Source.STREAM);
 
-            // Set venue and instrument ID
-            encoder.venue(bookUpdate.venue());
-            encoder.instrumentId(bookUpdate.instrumentId());
-            encoder.source(Source.STREAM);
-
-            // Encode the bid book
-            BookUpdateEncoder.BidBookEncoder bidBookEncoder = encoder.bidBookCount(bookUpdate.bidBook().size());
-            for (BookEntry bid : bookUpdate.bidBook()) {
-                bidBookEncoder.next().price(bid.price()).size(bid.size());
-            }
-
-            // Encode the ask book
-            BookUpdateEncoder.AskBookEncoder askBookEncoder = encoder.askBookCount(bookUpdate.askBook().size());
-            for (BookEntry ask : bookUpdate.askBook()) {
-                askBookEncoder.next().price(ask.price()).size(ask.size());
-            }
-
-            // Set the instrument status
-            encoder.instrumentStatus(bookUpdate.instrumentStatus());
-
-        } else {
-            System.out.println("Unsupported message type: " + marketDataMessage.getClass().getSimpleName());
+        // Encode the bid book
+        BookUpdateEncoder.BidBookEncoder bidBookEncoder = encoder.bidBookCount(bookUpdate.bidBook().size());
+        for (BookEntry bid : bookUpdate.bidBook()) {
+            bidBookEncoder.next().price(bid.price()).size(bid.size());
         }
 
-        return directBuffer;
+        // Encode the ask book
+        BookUpdateEncoder.AskBookEncoder askBookEncoder = encoder.askBookCount(bookUpdate.askBook().size());
+        for (BookEntry ask : bookUpdate.askBook()) {
+            askBookEncoder.next().price(ask.price()).size(ask.size());
+        }
+
+        // Set the instrument status
+        encoder.instrumentStatus(bookUpdate.instrumentStatus());
+
+    } else if (marketDataMessage instanceof BidBookUpdateImpl) {
+        // Handle specific case for BidBookUpdateImpl
+        BidBookUpdateImpl bidBookUpdate = (BidBookUpdateImpl) marketDataMessage;
+
+        encoder.venue(bidBookUpdate.venue());
+        encoder.instrumentId(bidBookUpdate.instrumentId());
+        encoder.source(Source.STREAM);
+
+        // Encode the bid book only
+        BookUpdateEncoder.BidBookEncoder bidBookEncoder = encoder.bidBookCount(bidBookUpdate.bidBook().size());
+        for (BookEntry bid : bidBookUpdate.bidBook()) {
+            bidBookEncoder.next().price(bid.price()).size(bid.size());
+        }
+
+    } else {
+        System.out.println("Unsupported message type: " + marketDataMessage.getClass().getSimpleName());
+        return null;  // Return null for unsupported types
     }
+
+    return directBuffer;
+}
+
 }
