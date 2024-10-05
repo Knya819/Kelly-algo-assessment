@@ -1,74 +1,50 @@
 package codingblackfemales.gettingstarted;
 
 import codingblackfemales.algo.AlgoLogic;
-import codingblackfemales.marketdata.api.MarketDataMessage;
-import codingblackfemales.marketdata.impl.SimpleFileMarketDataProvider;
 import org.agrona.concurrent.UnsafeBuffer;
-import org.junit.Before;
+
 import org.junit.Test;
 
+/**
+ * This test plugs together all of the infrastructure, including the order book (which you can trade against)
+ * and the market data feed.
+ *
+ * If your algo adds orders to the book, they will reflect in your market data coming back from the order book.
+ *
+ * If you cross the spread (i.e. you BUY an order with a price which is == or > askPrice()) you will match,
+ * and receive a fill back into your order from the order book (visible from the algo in the childOrders of the state object).
+ *
+ * If you cancel the order your child order will show the order status as cancelled in the childOrders of the state object.
+ */
 public class MyAlgoBackTest extends AbstractAlgoBackTest {
 
-    private SimpleFileMarketDataProvider marketDataProvider;
-
+    // This is where you define which algorithm logic to use (your custom logic)
     @Override
     public AlgoLogic createAlgoLogic() {
-        // Use MyAlgoLogic in the backtest,  Add it to the container for testing
-        return new MyAlgoLogic();
+        return new MyAlgoLogic();  // Your custom algorithm logic
     }
 
-    @Before
-    public void setup() {
-        // Specify the path to the market data JSON file
-        String filePath = "src/test/resources/MarketData/marketdatatest.json";
+    // Test method to run the backtest
+    @Test
+    public void testExampleBackTest() throws Exception {
+        // Instead of manually creating market data ticks, use the processMarketData() method.
+        // This method reads from your JSON file and applies your algorithm logic.
+        processMarketData();
 
-        // Initialize the market data provider
-        marketDataProvider = new SimpleFileMarketDataProvider(filePath);
+        // After processing market data, get the current state of the algo
+        var state = container.getState();
 
-        // Initialize the container by calling getSequencer()
-        getSequencer();
+        // Check things like filled quantity, canceled order count, etc.
+        // For example:
+        // long filledQuantity = state.getChildOrders().stream().map(ChildOrder::getFilledQuantity).reduce(Long::sum).get();
+        // assertEquals(225, filledQuantity);  // Example assertion
+
+        // Add additional checks/assertions as needed based on your algo logic
     }
 
-   @Test
-public void testBackTestWithMarketData() throws Exception {
-    MarketDataMessage marketDataMessage;
-
-    // Poll the market data and apply the algorithm logic for each tick
-    while ((marketDataMessage = marketDataProvider.poll()) != null) {
-        System.out.println("Processing message: " + marketDataMessage.getClass().getSimpleName());
-
-        // Create the tick from the MarketDataMessage
-        UnsafeBuffer tick = createTickFromMarketData(marketDataMessage);
-
-        // Send the tick to the backtest
-        sendToBackTest(tick);
-
-        // Log the state of the order book before applying the algorithm logic
-        int bidLevels = container.getState().getBidLevels();
-        int askLevels = container.getState().getAskLevels();
-
-        System.out.println("Bid Levels: " + bidLevels);
-        System.out.println("Ask Levels: " + askLevels);
-
-        if (bidLevels == 0 || askLevels == 0) {
-            System.out.println("No bid or ask levels available, skipping this tick.");
-            continue;  // Skip this tick if no bid or ask levels are available
-        }
-
-        // Directly evaluate the algo logic from MyAlgoLogic
-        AlgoLogic algoLogic = new MyAlgoLogic();  // Create the algo logic
-        algoLogic.evaluate(container.getState());  // Evaluate the logic with the current state
-    }
-
-    // Final checks for the algorithm state
-    var finalState = container.getState();
-    // Perform any final assertions or checks here
-}
-
-    // Helper method to send the tick to the backtest
-    private void sendToBackTest(UnsafeBuffer tick) {
-        if (tick != null) {
-            container.onMessage(tick);  // Pass the tick to the container
-        }
+    @Override
+    public void send(UnsafeBuffer buffer) {
+        // This method sends the encoded market data to the container’s MarketDataService
+        container.getMarketDataService().onMessage(buffer);  // Pass the data for processing
     }
 }

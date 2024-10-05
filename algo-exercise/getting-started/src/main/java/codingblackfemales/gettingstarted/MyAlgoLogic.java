@@ -23,6 +23,7 @@ import java.util.List;
 public class MyAlgoLogic implements AlgoLogic {
 
     private static final Logger logger = LoggerFactory.getLogger(MyAlgoLogic.class);
+    
 
     // Instantiate strategies with required parameters
     private final ExecutionStrategy twapStrategy = new TWAPStrategy();
@@ -32,8 +33,12 @@ public class MyAlgoLogic implements AlgoLogic {
     private final ExecutionStrategy icebergStrategy = new IcebergStrategy();
     private final ExecutionStrategy povStrategy = new POVStrategy();
 
+        // Flag to ensure the market state is logged only once
+    private boolean isMarketStateLogged = false;
+
     @Override
     public Action evaluate(SimpleAlgoState state) {
+        
         // Create local copies of bid and ask levels
         List<BidLevel> localBidLevels = new ArrayList<>();
         List<AskLevel> localAskLevels = new ArrayList<>();
@@ -52,6 +57,11 @@ public class MyAlgoLogic implements AlgoLogic {
             if (askLevel != null) {
                 localAskLevels.add(askLevel);
             }
+        }
+        // Log the market state only once, when the flag is false
+        if (!isMarketStateLogged) {
+            logger.info("[MyAlgoLogic] Current Market State:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
+            isMarketStateLogged = true; // Set the flag to true to prevent further logging
         }
 
         // Select execution strategy based on market conditions
@@ -96,10 +106,10 @@ public class MyAlgoLogic implements AlgoLogic {
 
         // Default to existing logic based on volatility for TWAP, VWAP, and POV
         if (marketVolatility > volumeThreshold) {
-            logger.info("[SelectStrategy] Selected VWAP Strategy based on high market volatility.");
+            logger.info("[SelectStrategy] Selected VWAP Strategy based on high market volatility:"+ marketVolatility);
             return vwapStrategy;
-        } else if (marketVolatility < Math.round(volumeThreshold * 0.4)) {
-            logger.info("[SelectStrategy] Selected POV Strategy based on low market volatility.");
+        } else if (marketVolatility > Math.round(volumeThreshold * 0.3) && marketVolatility < Math.round(volumeThreshold * 0.4)) {
+            logger.info("[SelectStrategy] Selected POV Strategy based on low market volatility."+ marketVolatility);
             return povStrategy;
         } else {
             logger.info("[SelectStrategy] Selected TWAP Strategy by default.");

@@ -222,15 +222,30 @@ public class OrderHelper {
         return price >= lowerBound && price <= upperBound;
     }
 
-    // Method to calculate profit based on buy and sell totals
-    public static void calculateProfit(double buyTotal, double sellTotal) {
-        if (buyTotal > 0 || sellTotal > 0) {
-            double profit = sellTotal - buyTotal;
-            logger.info("[ORDERHELPER] Total Profit from the trades: " + sellTotal + " - " + buyTotal + " = " + profit);
+public static void calculateProfit(double buyTotal, double sellTotal) {
+    if (buyTotal > 0 || sellTotal > 0) {
+        double profit = sellTotal - buyTotal;
+
+        // ANSI color codes for green (profit), red (loss), and bold
+        String ANSI_GREEN = "\u001B[32m";
+        String ANSI_RED = "\u001B[31m";
+        String ANSI_BOLD = "\u001B[1m";
+        String ANSI_RESET = "\u001B[0m";
+
+        if (profit > 0) {
+            logger.info("[ORDERHELPER] Total Profit from the trades: " + sellTotal + " - " + buyTotal + " = "  
+                        + ANSI_BOLD + ANSI_GREEN + profit + ANSI_RESET);
+        } else if (profit < 0) {
+            logger.info("[ORDERHELPER] Total Loss from the trades: " + sellTotal + " - " + buyTotal + " = " 
+                        + ANSI_BOLD + ANSI_RED  + profit + ANSI_RESET);
         } else {
-            logger.info("[ORDERHELPER] No trades were executed, no profit calculation possible");
+            logger.info("[ORDERHELPER] Total Profit from the trades: " + sellTotal + " - " + buyTotal + " = " + profit); // No color for zero profit
         }
+    } else {
+        logger.info("[ORDERHELPER] No trades were executed, no profit calculation possible");
     }
+}
+
 
     // Method to update bid levels by reducing quantity and removing fully filled levels
     public static void updateBidLevels(List<BidLevel> bidLevels, long price, long filledQuantity) {
@@ -279,12 +294,13 @@ public class OrderHelper {
 
         // Loop through both bid and ask levels
         for (int i = 0; i < maxLevels; i++) {
-            String bidStr = i < bidLevels.size() 
-                ? String.format("%6d @ %6d", bidLevels.get(i).quantity, bidLevels.get(i).price) 
+            String bidStr = i < bidLevels
+            .size() 
+                ? String.format("%5d @ %4d",bidLevels.get(i).price, bidLevels.get(i).quantity ) 
                 : "       -       ";  // Empty space if there are no more bid levels, to chango to -
 
             String askStr = i < askLevels.size() 
-                ? String.format("%6d @ %6d", askLevels.get(i).quantity, askLevels.get(i).price) 
+                ? String.format("%5d @ %4d", askLevels.get(i).price, askLevels.get(i).quantity ) 
                 : "       -       ";  // Empty space if there are no more ask levels
 
             // Append bid and ask levels side by side

@@ -4,29 +4,28 @@ import codingblackfemales.algo.AlgoLogic;
 import codingblackfemales.container.Actioner;
 import codingblackfemales.container.AlgoContainer;
 import codingblackfemales.container.RunTrigger;
-import codingblackfemales.marketdata.api.BookEntry;
 import codingblackfemales.marketdata.api.MarketDataMessage;
-import codingblackfemales.marketdata.impl.BookUpdateImpl;
+import codingblackfemales.marketdata.api.MarketDataEncoder;
+import codingblackfemales.marketdata.api.MarketDataProvider;
+import codingblackfemales.marketdata.impl.SimpleFileMarketDataProvider;
 import codingblackfemales.orderbook.OrderBook;
 import codingblackfemales.orderbook.channel.MarketDataChannel;
 import codingblackfemales.orderbook.channel.OrderChannel;
 import codingblackfemales.orderbook.consumer.OrderBookInboundOrderConsumer;
 import codingblackfemales.sequencer.DefaultSequencer;
-import codingblackfemales.marketdata.impl.BidBookUpdateImpl;
 import codingblackfemales.sequencer.Sequencer;
 import codingblackfemales.sequencer.consumer.LoggingConsumer;
 import codingblackfemales.sequencer.marketdata.SequencerTestCase;
 import codingblackfemales.sequencer.net.TestNetwork;
 import codingblackfemales.service.MarketDataService;
 import codingblackfemales.service.OrderService;
-import messages.marketdata.*;
 import org.agrona.concurrent.UnsafeBuffer;
-
-import java.nio.ByteBuffer;
 
 public abstract class AbstractAlgoBackTest extends SequencerTestCase {
 
     protected AlgoContainer container;
+    private final MarketDataEncoder encoder = new MarketDataEncoder();  // Use your encoder
+    private MarketDataProvider provider;
 
     @Override
     public Sequencer getSequencer() {
@@ -52,64 +51,23 @@ public abstract class AbstractAlgoBackTest extends SequencerTestCase {
         network.addConsumer(orderConsumer);
         network.addConsumer(container);
 
+        // Initialize Market Data Provider to read from your JSON file
+        provider = new SimpleFileMarketDataProvider("src/test/resources/MarketData/marketdatatest.json");
+
         return sequencer;
     }
 
     public abstract AlgoLogic createAlgoLogic();
 
-    // Add this method to AbstractAlgoBackTest
-    protected UnsafeBuffer createTickFromMarketData(MarketDataMessage marketDataMessage) {
-    final MessageHeaderEncoder headerEncoder = new MessageHeaderEncoder();
-    final BookUpdateEncoder encoder = new BookUpdateEncoder();
-
-    final ByteBuffer byteBuffer = ByteBuffer.allocateDirect(1024);
-    final UnsafeBuffer directBuffer = new UnsafeBuffer(byteBuffer);
-
-    encoder.wrapAndApplyHeader(directBuffer, 0, headerEncoder);
-
-    if (marketDataMessage instanceof BookUpdateImpl) {
-        BookUpdateImpl bookUpdate = (BookUpdateImpl) marketDataMessage;
-
-        // Set venue and instrument ID
-        encoder.venue(bookUpdate.venue());
-        encoder.instrumentId(bookUpdate.instrumentId());
-        encoder.source(Source.STREAM);
-
-        // Encode the bid book
-        BookUpdateEncoder.BidBookEncoder bidBookEncoder = encoder.bidBookCount(bookUpdate.bidBook().size());
-        for (BookEntry bid : bookUpdate.bidBook()) {
-            bidBookEncoder.next().price(bid.price()).size(bid.size());
+    // Method to process market data from the provider
+    protected void processMarketData() {
+        MarketDataMessage marketDataMessage;
+        while ((marketDataMessage = provider.poll()) != null) {
+            UnsafeBuffer encoded = encoder.encode(marketDataMessage);
+            send(encoded);  // Send encoded message to the container
         }
-
-        // Encode the ask book
-        BookUpdateEncoder.AskBookEncoder askBookEncoder = encoder.askBookCount(bookUpdate.askBook().size());
-        for (BookEntry ask : bookUpdate.askBook()) {
-            askBookEncoder.next().price(ask.price()).size(ask.size());
-        }
-
-        // Set the instrument status
-        encoder.instrumentStatus(bookUpdate.instrumentStatus());
-
-    } else if (marketDataMessage instanceof BidBookUpdateImpl) {
-        // Handle specific case for BidBookUpdateImpl
-        BidBookUpdateImpl bidBookUpdate = (BidBookUpdateImpl) marketDataMessage;
-
-        encoder.venue(bidBookUpdate.venue());
-        encoder.instrumentId(bidBookUpdate.instrumentId());
-        encoder.source(Source.STREAM);
-
-        // Encode the bid book only
-        BookUpdateEncoder.BidBookEncoder bidBookEncoder = encoder.bidBookCount(bidBookUpdate.bidBook().size());
-        for (BookEntry bid : bidBookUpdate.bidBook()) {
-            bidBookEncoder.next().price(bid.price()).size(bid.size());
-        }
-
-    } else {
-        System.out.println("Unsupported message type: " + marketDataMessage.getClass().getSimpleName());
-        return null;  // Return null for unsupported types
     }
 
-    return directBuffer;
-}
-
+    // Abstract method that must be implemented by subclasses
+    public abstract void send(UnsafeBuffer buffer);
 }

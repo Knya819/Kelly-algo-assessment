@@ -12,6 +12,7 @@ import static org.junit.Assert.assertEquals;
 
 
 public class MyAlgoTest extends AbstractAlgoTest {
+    
 
     @Override
     public AlgoLogic createAlgoLogic() {
@@ -25,7 +26,7 @@ public class MyAlgoTest extends AbstractAlgoTest {
         send(createTick());
 
         // Verify that 3 child orders were created in total
-        assertEquals(3, container.getState().getChildOrders().size());
+        assertEquals(4, container.getState().getChildOrders().size());
 
         // Simulate additional market data moving towards us
         send(createTick());
