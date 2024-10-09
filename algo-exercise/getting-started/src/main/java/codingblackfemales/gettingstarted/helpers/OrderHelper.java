@@ -233,10 +233,10 @@ public static void calculateProfit(double buyTotal, double sellTotal) {
         String ANSI_RESET = "\u001B[0m";
 
         if (profit > 0) {
-            logger.info("[ORDERHELPER] Total Profit from the trades: " + sellTotal + " - " + buyTotal + " = "  
+            logger.info("[ORDERHELPER]" + ANSI_BOLD + ANSI_GREEN + " Total Profit" + ANSI_RESET + " from the trades: " + sellTotal + " - " + buyTotal + " = "  
                         + ANSI_BOLD + ANSI_GREEN + profit + ANSI_RESET);
         } else if (profit < 0) {
-            logger.info("[ORDERHELPER] Total Loss from the trades: " + sellTotal + " - " + buyTotal + " = " 
+            logger.info("[ORDERHELPER] " + ANSI_BOLD + ANSI_RED  + "Total Loss" + ANSI_RESET + " from the trades: " + sellTotal + " - " + buyTotal + " = " 
                         + ANSI_BOLD + ANSI_RED  + profit + ANSI_RESET);
         } else {
             logger.info("[ORDERHELPER] Total Profit from the trades: " + sellTotal + " - " + buyTotal + " = " + profit); // No color for zero profit
@@ -283,32 +283,49 @@ public static void calculateProfit(double buyTotal, double sellTotal) {
         }
     }
 
-    // Utility method to format the order book for better logging
-        public static String formatOrderBook(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
-        StringBuilder sb = new StringBuilder();
+   // Utility method to format the order book for better logging
+public static String formatOrderBook(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
+    StringBuilder sb = new StringBuilder();
 
-        sb.append(String.format("%-15s %-15s\n", "|----BID-----|", "|----ASK-----|"));  // Header for bid and ask columns
+    // Check if we have only bids or only asks
+    boolean onlyBids = !bidLevels.isEmpty() && askLevels.isEmpty();
+    boolean onlyAsks = !askLevels.isEmpty() && bidLevels.isEmpty();
 
-        // Determine the maximum number of levels to display (whichever is greater, bid or ask levels)
-        int maxLevels = Math.max(bidLevels.size(), askLevels.size());
+    // Header
+    if (onlyBids) {
+        sb.append(String.format("%-15s\n", "|----BID-----|"));
+    } else if (onlyAsks) {
+        sb.append(String.format("%-15s\n", "|----ASK-----|"));
+    } else {
+        sb.append(String.format("%-15s %-15s\n", "|----BID-----|", "|----ASK-----|"));
+    }
 
-        // Loop through both bid and ask levels
-        for (int i = 0; i < maxLevels; i++) {
-            String bidStr = i < bidLevels
-            .size() 
-                ? String.format("%5d @ %4d",bidLevels.get(i).price, bidLevels.get(i).quantity ) 
-                : "       -       ";  // Empty space if there are no more bid levels, to chango to -
+    // Determine the maximum number of levels to display
+    int maxLevels = Math.max(bidLevels.size(), askLevels.size());
 
-            String askStr = i < askLevels.size() 
-                ? String.format("%5d @ %4d", askLevels.get(i).price, askLevels.get(i).quantity ) 
-                : "       -       ";  // Empty space if there are no more ask levels
+    // Loop through the levels
+    for (int i = 0; i < maxLevels; i++) {
+        String bidStr = i < bidLevels.size() 
+            ? String.format("%5d @ %4d", bidLevels.get(i).price, bidLevels.get(i).quantity)
+            : "       -       ";  // Empty space if there are no more bid levels
 
-            // Append bid and ask levels side by side
+        String askStr = i < askLevels.size() 
+            ? String.format("%5d @ %4d", askLevels.get(i).price, askLevels.get(i).quantity)
+            : "       -       ";  // Empty space if there are no more ask levels
+
+        // Append bid and ask levels based on what is available
+        if (onlyBids) {
+            sb.append(String.format("%-15s\n", bidStr));
+        } else if (onlyAsks) {
+            sb.append(String.format("%-15s\n", askStr));
+        } else {
             sb.append(String.format("%-15s %-15s\n", bidStr, askStr));
         }
-
-        return sb.toString();
     }
+
+    return sb.toString();
+}
+
 
 }
 
