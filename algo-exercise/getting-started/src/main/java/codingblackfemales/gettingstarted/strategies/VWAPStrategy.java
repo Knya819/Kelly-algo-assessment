@@ -18,7 +18,7 @@ import java.util.List;
 public class VWAPStrategy implements ExecutionStrategy {
 
     private static final Logger logger = LoggerFactory.getLogger(VWAPStrategy.class);
-    private static final long MAX_ACTIVE_ORDERS = 100; // Maximum active orders (can be made dynamic)
+    private static final long MAX_ACTIVE_ORDERS = 10; // Maximum active orders (can be made dynamic)
 
     private List<BidLevel> localBidLevels = new ArrayList<>();  // Local copy of bid levels
     private List<AskLevel> localAskLevels = new ArrayList<>();  // Local copy of ask levels

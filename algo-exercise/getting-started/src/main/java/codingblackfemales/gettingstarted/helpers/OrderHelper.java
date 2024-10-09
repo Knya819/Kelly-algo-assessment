@@ -145,47 +145,49 @@ public class OrderHelper {
     }
 
     // Calculate market volatility based on the spread between all bid and ask prices
-    public static double calculateMarketVolatility(SimpleAlgoState state) {
-        int bidSize = state.getBidLevels();
-        int askSize = state.getAskLevels();
-        
-        // Ensure there are both bid and ask prices available
-        if (bidSize == 0 || askSize == 0) {
-            throw new IllegalStateException("No bid or ask prices available in the order book.");
-        }
+   public static double calculateMarketVolatility(SimpleAlgoState state) {
+    int bidSize = state.getBidLevels();
+    int askSize = state.getAskLevels();
 
-        double totalSpread = 0.0;
-        int count = 0;
-
-        // Determine how many levels to compare (use the smaller of the two)
-        int levelsToCompare = Math.min(bidSize, askSize);
-
-        // Iterate through each bid and ask level, calculating the spread
-        for (int i = 0; i < levelsToCompare; i++) {
-            BidLevel bidLevel = state.getBidAt(i);
-            AskLevel askLevel = state.getAskAt(i);
-
-            if (bidLevel == null || askLevel == null) {
-                break; // Exit if we run out of valid levels to compare
-            }
-
-            double bidPrice = bidLevel.price;
-            double askPrice = askLevel.price;
-
-            // Avoid division by zero
-            if (bidPrice == 0) {
-                throw new ArithmeticException("Bid price is zero at level " + i);
-            }
-
-            // Calculate the spread between the current bid and ask level
-            double spread = Math.abs(askPrice - bidPrice) / bidPrice;
-            totalSpread += spread;
-            count++;
-        }
-
-        // Return the average spread as a measure of market volatility
-        return count > 0 ? totalSpread / count : 0;
+    // Return default volatility if only bids or only asks are available
+    if (bidSize == 0 || askSize == 0) {
+        logger.info("[OrderHelper] Market volatility calculation incomplete; using default volatility: 0.01");
+        return 0.01;
     }
+
+    double totalSpread = 0.0;
+    int count = 0;
+
+    // Determine how many levels to compare (use the smaller of the two)
+    int levelsToCompare = Math.min(bidSize, askSize);
+
+    // Iterate through each bid and ask level, calculating the spread
+    for (int i = 0; i < levelsToCompare; i++) {
+        BidLevel bidLevel = state.getBidAt(i);
+        AskLevel askLevel = state.getAskAt(i);
+
+        if (bidLevel == null || askLevel == null) {
+            break; // Exit if we run out of valid levels to compare
+        }
+
+        double bidPrice = bidLevel.price;
+        double askPrice = askLevel.price;
+
+        // Avoid division by zero
+        if (bidPrice == 0) {
+            throw new ArithmeticException("Bid price is zero at level " + i);
+        }
+
+        // Calculate the spread between the current bid and ask level
+        double spread = Math.abs(askPrice - bidPrice) / bidPrice;
+        totalSpread += spread;
+        count++;
+    }
+
+    // Return the average spread as a measure of market volatility
+    return count > 0 ? totalSpread / count : 0.01;  // Default to 0.1 if no levels to compare
+}
+
 
 
     // Calculate total order size based on child orders
@@ -284,46 +286,46 @@ public static void calculateProfit(double buyTotal, double sellTotal) {
     }
 
    // Utility method to format the order book for better logging
-public static String formatOrderBook(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
-    StringBuilder sb = new StringBuilder();
+        public static String formatOrderBook(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
+            StringBuilder sb = new StringBuilder();
 
-    // Check if we have only bids or only asks
-    boolean onlyBids = !bidLevels.isEmpty() && askLevels.isEmpty();
-    boolean onlyAsks = !askLevels.isEmpty() && bidLevels.isEmpty();
+            // Check if we have only bids or only asks
+            boolean onlyBids = !bidLevels.isEmpty() && askLevels.isEmpty();
+            boolean onlyAsks = !askLevels.isEmpty() && bidLevels.isEmpty();
 
-    // Header
-    if (onlyBids) {
-        sb.append(String.format("%-15s\n", "|----BID-----|"));
-    } else if (onlyAsks) {
-        sb.append(String.format("%-15s\n", "|----ASK-----|"));
-    } else {
-        sb.append(String.format("%-15s %-15s\n", "|----BID-----|", "|----ASK-----|"));
-    }
+            // Header
+            if (onlyBids) {
+                sb.append(String.format("%-15s\n", "|----BID-----|"));
+            } else if (onlyAsks) {
+                sb.append(String.format("%-15s\n", "|----ASK-----|"));
+            } else {
+                sb.append(String.format("%-15s %-15s\n", "|----BID-----|", "|----ASK-----|"));
+            }
 
-    // Determine the maximum number of levels to display
-    int maxLevels = Math.max(bidLevels.size(), askLevels.size());
+            // Determine the maximum number of levels to display
+            int maxLevels = Math.max(bidLevels.size(), askLevels.size());
 
-    // Loop through the levels
-    for (int i = 0; i < maxLevels; i++) {
-        String bidStr = i < bidLevels.size() 
-            ? String.format("%5d @ %4d", bidLevels.get(i).price, bidLevels.get(i).quantity)
-            : "       -       ";  // Empty space if there are no more bid levels
+            // Loop through the levels
+            for (int i = 0; i < maxLevels; i++) {
+                String bidStr = i < bidLevels.size() 
+                    ? String.format("%5d @ %4d", bidLevels.get(i).price, bidLevels.get(i).quantity)
+                    : "       -       ";  // Empty space if there are no more bid levels
 
-        String askStr = i < askLevels.size() 
-            ? String.format("%5d @ %4d", askLevels.get(i).price, askLevels.get(i).quantity)
-            : "       -       ";  // Empty space if there are no more ask levels
+                String askStr = i < askLevels.size() 
+                    ? String.format("%5d @ %4d", askLevels.get(i).price, askLevels.get(i).quantity)
+                    : "       -       ";  // Empty space if there are no more ask levels
 
-        // Append bid and ask levels based on what is available
-        if (onlyBids) {
-            sb.append(String.format("%-15s\n", bidStr));
-        } else if (onlyAsks) {
-            sb.append(String.format("%-15s\n", askStr));
-        } else {
-            sb.append(String.format("%-15s %-15s\n", bidStr, askStr));
-        }
-    }
+                // Append bid and ask levels based on what is available
+                if (onlyBids) {
+                    sb.append(String.format("%-15s\n", bidStr));
+                } else if (onlyAsks) {
+                    sb.append(String.format("%-15s\n", askStr));
+                } else {
+                    sb.append(String.format("%-15s %-15s\n", bidStr, askStr));
+                }
+            }
 
-    return sb.toString();
+            return sb.toString();
 }
 
 

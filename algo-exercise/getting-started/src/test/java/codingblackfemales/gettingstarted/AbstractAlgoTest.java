@@ -25,9 +25,7 @@ public abstract class AbstractAlgoTest extends SequencerTestCase {
 
     @Override
     public Sequencer getSequencer() {
-        // Set the logging level for MarketDataService to INFO or higher
-        setMarketDataServiceLogLevel(Level.INFO);  // Adjust to INFO, DEBUG, etc.
-
+     
         final TestNetwork network = new TestNetwork();
         final Sequencer sequencer = new DefaultSequencer(network);
 
@@ -51,10 +49,7 @@ public abstract class AbstractAlgoTest extends SequencerTestCase {
      * Set the logging level for MarketDataService to control verbosity in tests.
      * @param level Logging level (INFO, DEBUG, etc.)
      */
-    private void setMarketDataServiceLogLevel(Level level) {
-        Logger marketDataLogger = (Logger) LoggerFactory.getLogger(MarketDataService.class);
-        marketDataLogger.setLevel(level);
-    }
+   
 
     /**
      * Create a sample market data tick with high volatility bid/ask prices for testing.
