@@ -53,40 +53,40 @@ public abstract class AbstractAlgoBackTest extends SequencerTestCase {
         final OrderBookInboundOrderConsumer orderConsumer = new OrderBookInboundOrderConsumer(book);
 
         container = new AlgoContainer(new MarketDataService(runTrigger), new OrderService(runTrigger), runTrigger, actioner);
-        container.setLogic(createAlgoLogic());
+        container.setLogic(createAlgoLogic()); // Sets the AlgoLogic implementation
 
-
-       
         network.addConsumer(container.getMarketDataService());
         network.addConsumer(container.getOrderService());
         network.addConsumer(orderConsumer);
         network.addConsumer(container);
 
-        // Initialize Market Data Provider to read from your JSON file
+        // Initialize Market Data Provider and Encoder
         provider = new SimpleFileMarketDataProvider("src/resources/marketdata/marketdatatest.json");
         encoder = new MarketDataEncoder();
+
         return sequencer;
     }
 
+    // Abstract method to be implemented by subclasses to define specific AlgoLogic
     public abstract AlgoLogic createAlgoLogic();
 
+    // Method to create and process a tick
     public UnsafeBuffer createTick() {
-    System.out.println("createTick");
-    MarketDataMessage marketDataMessage = provider.poll();
-    
-    if (marketDataMessage != null) {
-        System.out.println(marketDataMessage);
-        // Use the retrieved message for encoding
-        UnsafeBuffer encoded = encoder.encode(marketDataMessage);
-        return encoded;
-    }
-    return null;
-    }
+        MarketDataMessage marketDataMessage;
+        System.out.println("createTick");    
+        while ((marketDataMessage = provider.poll()) != null) {
+            // Print the market data message before encoding
+            System.out.println("Market Data Message: " + marketDataMessage);
 
+            // Encode the message
+            UnsafeBuffer encoded = encoder.encode(marketDataMessage);
 
+            // Process the encoded message in MarketDataService
+            container.getMarketDataService().onMessage(encoded);
+
+            return encoded;  // Return the encoded message after processing
+        }
+        
+        return null;  // Return null if no message was available to process
+    }
 }
-    
-
-
-
-
