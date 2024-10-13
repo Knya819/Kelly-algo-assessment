@@ -15,94 +15,101 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.ArrayList;
+import java.util.List;
+
 public class VWAPStrategy implements ExecutionStrategy {
 
     private static final Logger logger = LoggerFactory.getLogger(VWAPStrategy.class);
-    private static final long MAX_ACTIVE_ORDERS = 10; // Maximum active orders (can be made dynamic)
+    private static final long MAX_ACTIVE_ORDERS = 10;
 
-    private List<BidLevel> localBidLevels = new ArrayList<>();  // Local copy of bid levels
-    private List<AskLevel> localAskLevels = new ArrayList<>();  // Local copy of ask levels
+    private List<BidLevel> localBidLevels = new ArrayList<>();
+    private List<AskLevel> localAskLevels = new ArrayList<>();
 
-    // Variables to track buy and sell information for profit calculation
     private double buyTotal = 0;
     private double sellTotal = 0;
 
     @Override
     public Action execute(SimpleAlgoState state) {
+        // Step 1: Populate order book if local lists are empty
+        if (localBidLevels.isEmpty() && localAskLevels.isEmpty()) {
+            OrderHelper.populateLocalOrderBook(localBidLevels, localAskLevels, state);
 
-        // Initialize local bid and ask levels if empty
-        if (localBidLevels.isEmpty()) {
-            for (int i = 0; i < state.getBidLevels(); i++) {
-                localBidLevels.add(state.getBidAt(i));  
+            // Remove null entries if present
+            localBidLevels.removeIf(bidLevel -> bidLevel == null);
+            localAskLevels.removeIf(askLevel -> askLevel == null);
+
+            if (localBidLevels.isEmpty() && localAskLevels.isEmpty()) {
+                logger.info("[VWAPStrategy] Order book is empty after refresh. No action will be taken.");
+                return NoAction.NoAction;
             }
-            logger.info("[VWAPStrategy] Bid levels initialized: " + localBidLevels);
-        }
-        if (localAskLevels.isEmpty()) {
-            for (int i = 0; i < state.getAskLevels(); i++) {
-                localAskLevels.add(state.getAskAt(i));  
-            }
-            logger.info("[VWAPStrategy] Ask levels initialized: " + localAskLevels);
         }
 
-        // Use OrderManager to handle fully filled orders or too many active orders
-        Action manageOrdersAction = OrderManager.manageOrders(state);
-        if (manageOrdersAction != null) {
-            logger.info("[VWAPStrategy] OrderManager is canceling orders.");
-            return manageOrdersAction;  // If any action is returned (cancel order), return it
-        }
+        // Step 2: Sort bid and ask levels to maintain time-price priority
+        OrderHelper.sortOrderBook(localBidLevels, localAskLevels);
+
+        logger.info("[VWAPStrategy] Current Market State (sorted by time-price priority):\n" +
+                OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
 
         double bidVwap = OrderHelper.calculateBidVWAP(state);
         double askVwap = OrderHelper.calculateAskVWAP(state);
 
-        // Buy logic: Buy if the price is below BidVWAP and fewer than the max allowed active orders
-        if (state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
-            BidLevel bestBid = localBidLevels.get(0);
-            long price = bestBid.price;
-            long quantity = bestBid.quantity;
+        // Step 3: Buy logic
+        if (!localBidLevels.isEmpty() && state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
+            for (BidLevel bidLevel : localBidLevels) {
+                if (bidLevel == null) continue;
+                long price = bidLevel.price;
+                long bidQuantity = bidLevel.quantity;
 
-            logger.info("[VWAPStrategy] Checking buy logic: Bid Price = " + price + ", Bid VWAP = " + bidVwap);
-            if (price <= bidVwap) {
-                logger.info("[VWAPStrategy] Placing buy order below Bid VWAP: " + bidVwap + " at price: " + price);
-                Action action = new CreateChildOrder(Side.BUY, quantity, price);
+                logger.info("[VWAPStrategy] Checking buy logic: Bid Price = " + price + ", Bid VWAP = " + bidVwap);
+                if (price <= bidVwap) {
+                    logger.info("[VWAPStrategy] Placing buy order at price: " + price);
+                    Action action = new CreateChildOrder(Side.BUY, bidQuantity, price);
 
-                // Accumulate the buy total
-                buyTotal += price * quantity;
+                    buyTotal += price * bidQuantity;
+                    OrderHelper.updateBidLevels(localBidLevels, price, bidQuantity);
+                    logger.info("[VWAPStrategy] Updated order book after buy:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
 
-                // Update the local bid levels using OrderHelper
-                OrderHelper.updateBidLevels(localBidLevels, price, quantity);
-                logger.info("[VWAPStrategy] Updated local order book state after buy:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
-
-                logger.info("[VWAPStrategy] Active orders count after buy: " + state.getActiveChildOrders().size());
-                return action;
+                    OrderHelper.logBidAskLevelCounts(localBidLevels, localAskLevels);
+                    return action;
+                }
             }
+            logger.info("[VWAPStrategy] No bid level meets VWAP condition for buy.");
         }
 
-        // SELL Logic: Sell if the price is above AskVWAP and fewer than the max allowed active orders
-        if (state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
-            AskLevel bestAsk = localAskLevels.get(0);  // Get the best ask level
-            long askPrice = bestAsk.price;
-            long askQuantity = bestAsk.quantity;
+        // Step 4: Sell logic
+        if (!localAskLevels.isEmpty() && state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
+            for (AskLevel askLevel : localAskLevels) {
+                if (askLevel == null) continue;
+                long askPrice = askLevel.price;
+                long askQuantity = askLevel.quantity;
 
-            logger.info("[VWAPStrategy] Checking sell logic: Ask Price = " + askPrice + ", Ask VWAP = " + askVwap);
-            if (askPrice >= askVwap) {
-                logger.info("[VWAPStrategy] Placing sell order above Ask VWAP: " + askVwap + " at price: " + askPrice);
-                Action action = new CreateChildOrder(Side.SELL, askQuantity, askPrice);
+                logger.info("[VWAPStrategy] Checking sell logic: Ask Price = " + askPrice + ", Ask VWAP = " + askVwap);
+                if (askPrice >= askVwap) {
+                    logger.info("[VWAPStrategy] Placing sell order at price: " + askPrice);
+                    Action action = new CreateChildOrder(Side.SELL, askQuantity, askPrice);
 
-                // Accumulate the sell total
-                sellTotal += askPrice * askQuantity;
+                    sellTotal += askPrice * askQuantity;
+                    OrderHelper.updateAskLevels(localAskLevels, askPrice, askQuantity);
+                    logger.info("[VWAPStrategy] Updated order book after sell:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
 
-                // Update the local ask levels using OrderHelper
-                OrderHelper.updateAskLevels(localAskLevels, askPrice, askQuantity);
-                logger.info("[VWAPStrategy] Updated local order book state after sell:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
-
-                return action;
+                    OrderHelper.logBidAskLevelCounts(localBidLevels, localAskLevels);
+                    return action;
+                }
             }
+            logger.info("[VWAPStrategy] No ask level meets VWAP condition for sell.");
         }
 
-        // Call the OrderHelper to calculate profit at the end of the evaluation
+        // Step 5: Final profit calculation and clearing lists
         OrderHelper.calculateProfit(buyTotal, sellTotal);
-
         logger.info("[VWAPStrategy] No action required, done for now.");
+
+        // Clear lists to avoid reuse of stale data in the next call
+        localBidLevels.clear();
+        localAskLevels.clear();
+
         return NoAction.NoAction;
     }
 }

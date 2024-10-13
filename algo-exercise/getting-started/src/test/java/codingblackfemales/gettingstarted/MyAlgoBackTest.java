@@ -1,6 +1,8 @@
 package codingblackfemales.gettingstarted;
 
 import codingblackfemales.algo.AlgoLogic;
+import org.agrona.concurrent.UnsafeBuffer;
+
 import org.junit.Test;
 
 /**
@@ -24,8 +26,13 @@ public class MyAlgoBackTest extends AbstractAlgoBackTest {
 
     @Test
     public void testExampleBackTest() throws Exception {
-        //create a sample market data tick....
-        send(createTick());
-    }
+        UnsafeBuffer tick;
 
+        while ((tick = createTick()) != null) {
+            send(tick);  // Send each tick for processing in AlgoLogic
+        }
+
+        // After processing all ticks, you may want to output the final state of the order book
+       // System.out.println("[MyAlgoBackTest] Final Cumulative Order Book State:\n" + cumulativeOrderBook);
+    }
 }

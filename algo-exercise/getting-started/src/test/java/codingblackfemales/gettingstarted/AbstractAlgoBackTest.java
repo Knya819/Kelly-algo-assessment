@@ -72,21 +72,22 @@ public abstract class AbstractAlgoBackTest extends SequencerTestCase {
 
     // Method to create and process a tick
     public UnsafeBuffer createTick() {
-        MarketDataMessage marketDataMessage;
-        System.out.println("createTick");    
-        while ((marketDataMessage = provider.poll()) != null) {
-            // Print the market data message before encoding
-            System.out.println("Market Data Message: " + marketDataMessage);
+    // Poll a single MarketDataMessage from the provider
+    MarketDataMessage marketDataMessage = provider.poll();
+    if (marketDataMessage != null) {
+        // Print the market data message before encoding
+        System.out.println("Market Data Message: " + marketDataMessage);
 
-            // Encode the message
-            UnsafeBuffer encoded = encoder.encode(marketDataMessage);
+        // Encode the message
+        UnsafeBuffer encoded = encoder.encode(marketDataMessage);
 
-            // Process the encoded message in MarketDataService
-            container.getMarketDataService().onMessage(encoded);
+        // Process the encoded message in MarketDataService
+        container.getMarketDataService().onMessage(encoded);
 
-            return encoded;  // Return the encoded message after processing
-        }
-        
-        return null;  // Return null if no message was available to process
+        return encoded;  // Return the encoded message after processing
     }
+
+    return null;  // Return null if no message was available to process
+}
+
 }

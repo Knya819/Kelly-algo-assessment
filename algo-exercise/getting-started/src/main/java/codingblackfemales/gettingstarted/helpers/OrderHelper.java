@@ -4,13 +4,15 @@ import codingblackfemales.sotw.ChildOrder;
 import codingblackfemales.sotw.SimpleAlgoState;
 import codingblackfemales.sotw.marketdata.BidLevel;
 import codingblackfemales.sotw.marketdata.AskLevel;
+import messages.order.Side;
+
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-
 
 public class OrderHelper {
 
@@ -67,60 +69,72 @@ public class OrderHelper {
     }
 
     // Calculate VWAP: Volume-Weighted Average Price for Bids
-    public static double calculateBidVWAP(SimpleAlgoState state) {
-        int i = 0;
-        double totalVolume = 0;
-        double totalPriceVolume = 0;
-
-        while (true) {
-            BidLevel bidLevel = state.getBidAt(i);
-            if (bidLevel == null) {
-                break;
-            }
-
-            long quantity = bidLevel.quantity;
-            double price = bidLevel.price;
-
-            totalVolume += quantity;
-            totalPriceVolume += price * quantity;
-            i++;
-        }
-
-        if (totalVolume == 0) {
-            logger.warn("[VWAP] Total bid volume is zero. Returning best bid price.");
-            return state.getBidAt(0).price;
-        }
-
-        return totalPriceVolume / totalVolume;
+public static double calculateBidVWAP(SimpleAlgoState state) {
+    // Check if there are any valid bid levels
+    if (state.getBidLevels() == 0 || state.getBidAt(0) == null) {
+        logger.warn("[VWAP] No bid levels available. Cannot calculate Bid VWAP.");
+        return Double.NaN; // Or return a suitable default value
     }
 
-    // Calculate VWAP: Volume-Weighted Average Price for Asks
-    public static double calculateAskVWAP(SimpleAlgoState state) {
-        int i = 0;
-        double totalVolume = 0;
-        double totalPriceVolume = 0;
+    int i = 0;
+    double totalVolume = 0;
+    double totalPriceVolume = 0;
 
-        while (true) {
-            AskLevel askLevel = state.getAskAt(i);
-            if (askLevel == null) {
-                break;
-            }
-
-            long quantity = askLevel.quantity;
-            double price = askLevel.price;
-
-            totalVolume += quantity;
-            totalPriceVolume += price * quantity;
-            i++;
+    while (true) {
+        BidLevel bidLevel = state.getBidAt(i);
+        if (bidLevel == null) {
+            break;
         }
 
-        if (totalVolume == 0) {
-            logger.warn("[VWAP] Total ask volume is zero. Returning best ask price.");
-            return state.getAskAt(0).price;
-        }
+        long quantity = bidLevel.quantity;
+        double price = bidLevel.price;
 
-        return totalPriceVolume / totalVolume;
+        totalVolume += quantity;
+        totalPriceVolume += price * quantity;
+        i++;
     }
+
+    if (totalVolume == 0) {
+        logger.warn("[VWAP] Total bid volume is zero. Returning best bid price.");
+        return state.getBidAt(0).price; // Return best bid if no volume exists
+    }
+
+    return totalPriceVolume / totalVolume;
+}
+
+// Calculate VWAP: Volume-Weighted Average Price for Asks
+public static double calculateAskVWAP(SimpleAlgoState state) {
+    // Check if there are any valid ask levels
+    if (state.getAskLevels() == 0 || state.getAskAt(0) == null) {
+        logger.warn("[VWAP] No ask levels available. Cannot calculate Ask VWAP.");
+        return Double.NaN; // Or return a suitable default value
+    }
+
+    int i = 0;
+    double totalVolume = 0;
+    double totalPriceVolume = 0;
+
+    while (true) {
+        AskLevel askLevel = state.getAskAt(i);
+        if (askLevel == null) {
+            break;
+        }
+
+        long quantity = askLevel.quantity;
+        double price = askLevel.price;
+
+        totalVolume += quantity;
+        totalPriceVolume += price * quantity;
+        i++;
+    }
+
+    if (totalVolume == 0) {
+        logger.warn("[VWAP] Total ask volume is zero. Returning best ask price.");
+        return state.getAskAt(0).price; // Return best ask if no volume exists
+    }
+
+    return totalPriceVolume / totalVolume;
+}
 
     // Calculate the overall VWAP as an average of BidVWAP and AskVWAP
     public static double calculateVWAP(SimpleAlgoState state) {
@@ -137,12 +151,7 @@ public class OrderHelper {
             .sum();
     }
 
-    // Calculate the total filled quantity from child orders
-    public static long calculateFilledQuantity(SimpleAlgoState state) {
-        return state.getChildOrders().stream()
-            .mapToLong(ChildOrder::getFilledQuantity)
-            .sum();
-    }
+   
 
     // Calculate market volatility based on the spread between all bid and ask prices
    public static double calculateMarketVolatility(SimpleAlgoState state) {
@@ -152,7 +161,7 @@ public class OrderHelper {
     // Return default volatility if only bids or only asks are available
     if (bidSize == 0 || askSize == 0) {
         logger.info("[OrderHelper] Market volatility calculation incomplete; using default volatility: 0.01");
-        return 0.01;
+        return 0.1;
     }
 
     double totalSpread = 0.0;
@@ -185,17 +194,52 @@ public class OrderHelper {
     }
 
     // Return the average spread as a measure of market volatility
-    return count > 0 ? totalSpread / count : 0.01;  // Default to 0.1 if no levels to compare
+    return count > 0 ? totalSpread / count : 0.1;  // Default to 0.1 if no levels to compare
 }
+
+ public static void logChildOrderDetails(SimpleAlgoState state) {
+        int buyCounter = 1;
+        int sellCounter = 1;
+
+        for (ChildOrder order : state.getChildOrders()) {
+            String sideText;
+            if (order.getSide() == Side.BUY) {
+                sideText = "BUY " + buyCounter;
+                buyCounter++;
+            } else if (order.getSide() == Side.SELL) {
+                sideText = "SELL " + sellCounter;
+                sellCounter++;
+            } else {
+                sideText = "UNKNOWN";
+            }
+
+            logger.info("ChildOrder - Side: " + sideText +
+                        ", FilledQuantity: " + getFilledQuantityForOrder(order));
+        }
+    }
+
+    // Method to retrieve filled quantity based on order side
+    public static long getFilledQuantityForOrder(ChildOrder order) {
+        long filledQuantity = 0L;
+        
+        if (order.getSide() == Side.BUY) {
+            filledQuantity = Math.min(order.getQuantity(), order.getQuantity()); // Assuming full fill here for demo
+        } else if (order.getSide() == Side.SELL) {
+            filledQuantity = Math.min(order.getQuantity(), order.getQuantity());
+        }
+        
+        return filledQuantity;
+    }
 
 
 
     // Calculate total order size based on child orders
-    public static long calculateTotalOrderSize(SimpleAlgoState state) {
-        return state.getChildOrders().stream()
-            .mapToLong(ChildOrder::getQuantity)
-            .sum();
+    public static long calculateFilledQuantity(SimpleAlgoState state) {
+    return state.getChildOrders().stream()
+        .mapToLong(OrderHelper::getFilledQuantityForOrder)
+        .sum();
     }
+
 
     // Determine the percentage of market volume to trade based on market volatility
     public static double determineVolumePercentage(SimpleAlgoState state) {
@@ -224,30 +268,51 @@ public class OrderHelper {
         return price >= lowerBound && price <= upperBound;
     }
 
-public static void calculateProfit(double buyTotal, double sellTotal) {
-    if (buyTotal > 0 || sellTotal > 0) {
-        double profit = sellTotal - buyTotal;
+    public static void calculateProfit(double buyTotal, double sellTotal) {
+        if (buyTotal > 0 || sellTotal > 0) {
+            double profit = sellTotal - buyTotal;
 
-        // ANSI color codes for green (profit), red (loss), and bold
-        String ANSI_GREEN = "\u001B[32m";
-        String ANSI_RED = "\u001B[31m";
-        String ANSI_BOLD = "\u001B[1m";
-        String ANSI_RESET = "\u001B[0m";
+            // ANSI color codes for green (profit), red (loss), and bold
+            String ANSI_GREEN = "\u001B[32m";
+            String ANSI_RED = "\u001B[31m";
+            String ANSI_BOLD = "\u001B[1m";
+            String ANSI_RESET = "\u001B[0m";
+            
+            String profitMessage;
 
-        if (profit > 0) {
-            logger.info("[ORDERHELPER]" + ANSI_BOLD + ANSI_GREEN + " Total Profit" + ANSI_RESET + " from the trades: " + sellTotal + " - " + buyTotal + " = "  
-                        + ANSI_BOLD + ANSI_GREEN + profit + ANSI_RESET);
-        } else if (profit < 0) {
-            logger.info("[ORDERHELPER] " + ANSI_BOLD + ANSI_RED  + "Total Loss" + ANSI_RESET + " from the trades: " + sellTotal + " - " + buyTotal + " = " 
-                        + ANSI_BOLD + ANSI_RED  + profit + ANSI_RESET);
+            if (profit > 0) {
+                profitMessage = ANSI_BOLD + ANSI_GREEN + "  Total Profit  " + ANSI_RESET + " from the trades:  " + sellTotal + " - " + buyTotal + " = "  
+                                + ANSI_BOLD + ANSI_GREEN + profit + ANSI_RESET;
+            } else if (profit < 0) {
+                profitMessage = ANSI_BOLD + ANSI_RED + "  Total Loss  " + ANSI_RESET + " from the trades:  " + sellTotal + " - " + buyTotal + " = " 
+                                + ANSI_BOLD + ANSI_RED + profit + ANSI_RESET;
+            } else {
+                profitMessage = "  Total Profit from the trades:  " + sellTotal + " - " + buyTotal + " = " + profit;
+            }
+           
+            logger.info(" \n \n------------------------------------------------------------------------ \n"  
+               + profitMessage + "\n------------------------------------------------------------------------ \n");
+        
         } else {
-            logger.info("[ORDERHELPER] Total Profit from the trades: " + sellTotal + " - " + buyTotal + " = " + profit); // No color for zero profit
+            
+            logger.info("\n \n------------------------------------------------------------------------ \n "+
+           "[ORDERHELPER]  No trades were executed, no profit calculation possible "+
+            " \n ------------------------------------------------------------------------ \n");
         }
-    } else {
-        logger.info("[ORDERHELPER] No trades were executed, no profit calculation possible");
     }
-}
 
+
+
+    //   // Method to sort the bid and ask levels immediately upon receiving the order book
+    // public static void sortOrderBook(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
+    //     // Sort bid levels with highest price first (descending)
+    //     bidLevels.sort(Comparator.comparingLong((BidLevel b) -> b.price).reversed());
+        
+    //     // Sort ask levels with lowest price first (ascending)
+    //     askLevels.sort(Comparator.comparingLong(a -> a.price));
+
+    //     logger.info("[ORDERHELPER] Sorted order book: Bids sorted by highest price, Asks sorted by lowest price.");
+    // }
 
     // Method to update bid levels by reducing quantity and removing fully filled levels
     public static void updateBidLevels(List<BidLevel> bidLevels, long price, long filledQuantity) {
@@ -257,12 +322,12 @@ public static void calculateProfit(double buyTotal, double sellTotal) {
                 long remainingQuantity = bidLevel.quantity - filledQuantity;
                 if (remainingQuantity <= 0) {
                     logger.info("[ORDERHELPER] Removing bid level at price: " + price + " as quantity " + filledQuantity + " is fully bought");
-                    bidLevels.remove(i);  // Remove from the local copy
+                    bidLevels.remove(i);
                 } else {
-                    bidLevel.quantity = remainingQuantity;  // Update the quantity locally
+                    bidLevel.quantity = remainingQuantity;
                     logger.info("[ORDERHELPER] Updated bid level at price: " + price + ", remaining quantity: " + remainingQuantity);
                 }
-                break;  // Exit the loop once the level is updated or removed
+                break;
             }
         }
     }
@@ -275,61 +340,127 @@ public static void calculateProfit(double buyTotal, double sellTotal) {
                 long remainingQuantity = askLevel.quantity - filledQuantity;
                 if (remainingQuantity <= 0) {
                     logger.info("[ORDERHELPER] Removing ask level at price: " + price + " as quantity " + filledQuantity + " is fully sold.");
-                    askLevels.remove(i);  // Remove from the local copy
+                    askLevels.remove(i);
                 } else {
-                    askLevel.quantity = remainingQuantity;  // Update the quantity locally
+                    askLevel.quantity = remainingQuantity;
                     logger.info("[ORDERHELPER] Updated ask level at price: " + price + ", remaining quantity: " + remainingQuantity);
                 }
-                break;  // Exit the loop once the level is updated or removed
+                break;
             }
         }
     }
 
-   // Utility method to format the order book for better logging
-        public static String formatOrderBook(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
-            StringBuilder sb = new StringBuilder();
+    // Utility method to format the order book for better logging
+    public static String formatOrderBook(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
+        StringBuilder sb = new StringBuilder();
 
-            // Check if we have only bids or only asks
-            boolean onlyBids = !bidLevels.isEmpty() && askLevels.isEmpty();
-            boolean onlyAsks = !askLevels.isEmpty() && bidLevels.isEmpty();
+        boolean onlyBids = !bidLevels.isEmpty() && askLevels.isEmpty();
+        boolean onlyAsks = !askLevels.isEmpty() && bidLevels.isEmpty();
 
-            // Header
+        if (onlyBids) {
+            sb.append(String.format("%-15s\n", "|----BID-----|"));
+        } else if (onlyAsks) {
+            sb.append(String.format("%-15s\n", "|----ASK-----|"));
+        } else {
+            sb.append(String.format("%-15s %-15s\n", "|----BID-----|", "|----ASK-----|"));
+        }
+
+        int maxLevels = Math.max(bidLevels.size(), askLevels.size());
+
+        for (int i = 0; i < maxLevels; i++) {
+            String bidStr = i < bidLevels.size() 
+                ? String.format("%5d @ %4d", bidLevels.get(i).price, bidLevels.get(i).quantity)
+                : "       -       "; 
+
+            String askStr = i < askLevels.size() 
+                ? String.format("%5d @ %4d", askLevels.get(i).price, askLevels.get(i).quantity)
+                : "       -       ";
+
             if (onlyBids) {
-                sb.append(String.format("%-15s\n", "|----BID-----|"));
+                sb.append(String.format("%-15s\n", bidStr));
             } else if (onlyAsks) {
-                sb.append(String.format("%-15s\n", "|----ASK-----|"));
+                sb.append(String.format("%-15s\n", askStr));
             } else {
-                sb.append(String.format("%-15s %-15s\n", "|----BID-----|", "|----ASK-----|"));
+                sb.append(String.format("%-15s %-15s\n", bidStr, askStr));
             }
+        }
 
-            // Determine the maximum number of levels to display
-            int maxLevels = Math.max(bidLevels.size(), askLevels.size());
+        return sb.toString();
+    }
 
-            // Loop through the levels
-            for (int i = 0; i < maxLevels; i++) {
-                String bidStr = i < bidLevels.size() 
-                    ? String.format("%5d @ %4d", bidLevels.get(i).price, bidLevels.get(i).quantity)
-                    : "       -       ";  // Empty space if there are no more bid levels
+    // Static method to log the count of bid and ask levels
+    public static void logBidAskLevelCounts(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
+        int bidLevelCount = bidLevels.size();
+        int askLevelCount = askLevels.size();
+        logger.info("[ORDERHELPER] Bid Level Count: " + bidLevelCount + ", Ask Level Count: " + askLevelCount);
+    }
 
-                String askStr = i < askLevels.size() 
-                    ? String.format("%5d @ %4d", askLevels.get(i).price, askLevels.get(i).quantity)
-                    : "       -       ";  // Empty space if there are no more ask levels
+    // public static void populateLocalOrderBook(List<BidLevel> localBidLevels, List<AskLevel> localAskLevels, SimpleAlgoState state) {
+    //     localBidLevels.clear();
+    //     localAskLevels.clear();
 
-                // Append bid and ask levels based on what is available
-                if (onlyBids) {
-                    sb.append(String.format("%-15s\n", bidStr));
-                } else if (onlyAsks) {
-                    sb.append(String.format("%-15s\n", askStr));
-                } else {
-                    sb.append(String.format("%-15s %-15s\n", bidStr, askStr));
+    //     for (int i = 0; i < state.getBidLevels(); i++) {
+    //         localBidLevels.add(state.getBidAt(i));
+    //     }
+
+    //     for (int i = 0; i < state.getAskLevels(); i++) {
+    //         localAskLevels.add(state.getAskAt(i));
+    //     }
+    // }
+
+   public static void populateLocalOrderBook(List<BidLevel> localBidLevels, List<AskLevel> localAskLevels, SimpleAlgoState state) {
+        // Add new bid levels from the state while aggregating quantities for existing prices
+        for (int i = 0; i < state.getBidLevels(); i++) {
+            BidLevel newBidLevel = state.getBidAt(i);
+            if (newBidLevel != null) {
+                boolean exists = false;
+                for (BidLevel bidLevel : localBidLevels) {
+                    if (bidLevel.price == newBidLevel.price) {
+                        bidLevel.quantity += newBidLevel.quantity;  // Aggregate quantities for matching price
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) {
+                    localBidLevels.add(newBidLevel);  // Add new level if no matching price found
                 }
             }
+        }
 
-            return sb.toString();
+        // Add new ask levels from the state while aggregating quantities for existing prices
+        for (int i = 0; i < state.getAskLevels(); i++) {
+            AskLevel newAskLevel = state.getAskAt(i);
+            if (newAskLevel != null) {
+                boolean exists = false;
+                for (AskLevel askLevel : localAskLevels) {
+                    if (askLevel.price == newAskLevel.price) {
+                        askLevel.quantity += newAskLevel.quantity;  // Aggregate quantities for matching price
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) {
+                    localAskLevels.add(newAskLevel);  // Add new level if no matching price found
+                }
+            }
+        }
+
+        // Sort the order book after updating it with new levels
+        sortOrderBook(localBidLevels, localAskLevels);
+
+        logger.info("[ORDERHELPER] Updated local order book with new bid/ask levels from state.");
+    }
+
+    public static void sortOrderBook(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
+        // Sort bids in descending order (highest price first)
+        bidLevels.sort((b1, b2) -> Long.compare(b2.price, b1.price));
+        // Sort asks in ascending order (lowest price first)
+        askLevels.sort((a1, a2) -> Long.compare(a1.price, a2.price));
+        logger.info("[ORDERHELPER] Sorted order book: Bids sorted by highest price, Asks sorted by lowest price.");
+    }
+
+    // Additional helper methods for VWAP calculation, profit calculation, etc.
+
+    
+
 }
-
-
-}
-
-
-
