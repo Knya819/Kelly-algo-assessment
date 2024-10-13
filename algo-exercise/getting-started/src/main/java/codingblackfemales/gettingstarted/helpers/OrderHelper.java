@@ -448,7 +448,7 @@ public static double calculateAskVWAP(SimpleAlgoState state) {
         // Sort the order book after updating it with new levels
         sortOrderBook(localBidLevels, localAskLevels);
 
-        logger.info("[ORDERHELPER] Updated local order book with new bid/ask levels from state.");
+        //logger.info("[ORDERHELPER] Updated local order book with new bid/ask levels from state.");
     }
 
     public static void sortOrderBook(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
@@ -456,11 +456,16 @@ public static double calculateAskVWAP(SimpleAlgoState state) {
         bidLevels.sort((b1, b2) -> Long.compare(b2.price, b1.price));
         // Sort asks in ascending order (lowest price first)
         askLevels.sort((a1, a2) -> Long.compare(a1.price, a2.price));
-        logger.info("[ORDERHELPER] Sorted order book: Bids sorted by highest price, Asks sorted by lowest price.");
+
+      //  logger.info("[ORDERHELPER] Sorted order book: Bids sorted by highest price, Asks sorted by lowest price.");
     }
 
     // Additional helper methods for VWAP calculation, profit calculation, etc.
 
-    
+    public static void logConsolidatedOrderBookState(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
+    // Use formatOrderBook to get the formatted string
+    String formattedOrderBook = formatOrderBook(bidLevels, askLevels);
+    logger.info("[ORDERHELPER] Consolidated Order Book State:\n" + formattedOrderBook);
+}
 
 }

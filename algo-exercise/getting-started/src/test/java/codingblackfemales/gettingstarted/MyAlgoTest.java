@@ -25,8 +25,8 @@ public class MyAlgoTest extends AbstractAlgoTest {
         // Process different types of market data ticks
         send(createTick());  // 
         send(createTick1());  // Tick with only bids
-        // send(createTick2());  // Tick with only asks
-        // send(createTick3());  // Tick with both bids and asks
+        send(createTick2());  // Tick with only asks
+        send(createTick3());  // Tick with both bids and asks
         // send(createTick4());  // Random
     // }
 }

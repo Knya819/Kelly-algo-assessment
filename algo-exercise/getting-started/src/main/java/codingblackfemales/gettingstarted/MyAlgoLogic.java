@@ -24,7 +24,6 @@ public class MyAlgoLogic implements AlgoLogic {
     private final ExecutionStrategy vwapStrategy = new VWAPStrategy();
 
     private boolean isMarketStateLogged = false;
-    private boolean isOrderBookLogged = false;
     private ExecutionStrategy selectedStrategy;
 
     @Override
@@ -32,25 +31,20 @@ public class MyAlgoLogic implements AlgoLogic {
         List<BidLevel> localBidLevels = getLocalBidLevels(state);
         List<AskLevel> localAskLevels = getLocalAskLevels(state);
 
-        // Log the initial market state once
+        // Log the market state and sorted order book only once
         if (!isMarketStateLogged) {
-            logger.info("[MyAlgoLogic] Current Market State:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
+            logger.info("[MyAlgoLogic] Initial Market State:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
+            OrderHelper.sortOrderBook(localBidLevels, localAskLevels);
+            logger.info("[MyAlgoLogic] Current Market State (sorted by time-price priority) \n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
             isMarketStateLogged = true;
         }
 
-        // Sort and log the order book only once at the beginning
-        if (!isOrderBookLogged) {
-            OrderHelper.sortOrderBook(localBidLevels, localAskLevels);
-            logger.info("[MyAlgoLogic] Current Market State (sorted by time-price priority):\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
-            isOrderBookLogged = true;
-        }
-
-        // Select and store the strategy only once
+        // Select the execution strategy based on conditions if not already selected
         if (selectedStrategy == null) {
             selectedStrategy = selectExecutionStrategy(state);
         }
 
-        // Execute the stored strategy for all ticks
+        // Execute the selected strategy for each evaluation tick
         return selectedStrategy.execute(state);
     }
 
@@ -76,17 +70,17 @@ public class MyAlgoLogic implements AlgoLogic {
         return askLevels;
     }
 
-    public ExecutionStrategy selectExecutionStrategy(SimpleAlgoState state) {
+    private ExecutionStrategy selectExecutionStrategy(SimpleAlgoState state) {
         double marketVolatility = OrderHelper.calculateMarketVolatility(state);
         double volumeThreshold = 0.05;
 
         logger.info("[SelectStrategy] Evaluating market conditions for strategy selection...");
 
         if (marketVolatility > volumeThreshold) {
-            logger.info("[SelectStrategy] Selected VWAP Strategy based on high market volatility: " + marketVolatility);
+            logger.info("[SelectStrategy] Selected VWAP Strategy due to high market volatility: " + marketVolatility);
             return vwapStrategy;
         } else {
-            logger.info("[SelectStrategy] Selected TWAP Strategy by default.");
+            logger.info("[SelectStrategy] Selected TWAP Strategy as default.");
             return twapStrategy;
         }
     }

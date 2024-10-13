@@ -23,7 +23,7 @@ import java.util.List;
 public class VWAPStrategy implements ExecutionStrategy {
 
     private static final Logger logger = LoggerFactory.getLogger(VWAPStrategy.class);
-    private static final long MAX_ACTIVE_ORDERS = 10;
+    private static final long MAX_ACTIVE_ORDERS = 30;
 
     private List<BidLevel> localBidLevels = new ArrayList<>();
     private List<AskLevel> localAskLevels = new ArrayList<>();
@@ -50,9 +50,6 @@ public class VWAPStrategy implements ExecutionStrategy {
         // Step 2: Sort bid and ask levels to maintain time-price priority
         OrderHelper.sortOrderBook(localBidLevels, localAskLevels);
 
-        logger.info("[VWAPStrategy] Current Market State (sorted by time-price priority):\n" +
-                OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
-
         double bidVwap = OrderHelper.calculateBidVWAP(state);
         double askVwap = OrderHelper.calculateAskVWAP(state);
 
@@ -64,6 +61,12 @@ public class VWAPStrategy implements ExecutionStrategy {
                 long bidQuantity = bidLevel.quantity;
 
                 logger.info("[VWAPStrategy] Checking buy logic: Bid Price = " + price + ", Bid VWAP = " + bidVwap);
+                
+                if (price > bidVwap) {
+                    logger.info("[VWAPStrategy] Price too high; checking the next bid level for possible buy...");
+                    continue;
+                }
+                
                 if (price <= bidVwap) {
                     logger.info("[VWAPStrategy] Placing buy order at price: " + price);
                     Action action = new CreateChildOrder(Side.BUY, bidQuantity, price);
@@ -87,6 +90,12 @@ public class VWAPStrategy implements ExecutionStrategy {
                 long askQuantity = askLevel.quantity;
 
                 logger.info("[VWAPStrategy] Checking sell logic: Ask Price = " + askPrice + ", Ask VWAP = " + askVwap);
+                
+                if (askPrice < askVwap) {
+                    logger.info("[VWAPStrategy] Price too low; checking the next ask level for possible sell...");
+                    continue;
+                }
+                
                 if (askPrice >= askVwap) {
                     logger.info("[VWAPStrategy] Placing sell order at price: " + askPrice);
                     Action action = new CreateChildOrder(Side.SELL, askQuantity, askPrice);
