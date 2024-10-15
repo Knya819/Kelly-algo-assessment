@@ -269,37 +269,41 @@ public static double calculateAskVWAP(SimpleAlgoState state) {
     }
 
     public static void calculateProfit(double buyTotal, double sellTotal) {
-        if (buyTotal > 0 || sellTotal > 0) {
-            double profit = sellTotal - buyTotal;
+    if (buyTotal > 0 || sellTotal > 0) {
+        double profit = sellTotal - buyTotal;
+        double roi = (buyTotal > 0) ? (profit / buyTotal) * 100 : 0; // ROI as percentage
 
-            // ANSI color codes for green (profit), red (loss), and bold
-            String ANSI_GREEN = "\u001B[32m";
-            String ANSI_RED = "\u001B[31m";
-            String ANSI_BOLD = "\u001B[1m";
-            String ANSI_RESET = "\u001B[0m";
-            
-            String profitMessage;
-
-            if (profit > 0) {
-                profitMessage = ANSI_BOLD + ANSI_GREEN + "  Total Profit  " + ANSI_RESET + " from the trades:  " + sellTotal + " - " + buyTotal + " = "  
-                                + ANSI_BOLD + ANSI_GREEN + profit + ANSI_RESET;
-            } else if (profit < 0) {
-                profitMessage = ANSI_BOLD + ANSI_RED + "  Total Loss  " + ANSI_RESET + " from the trades:  " + sellTotal + " - " + buyTotal + " = " 
-                                + ANSI_BOLD + ANSI_RED + profit + ANSI_RESET;
-            } else {
-                profitMessage = "  Total Profit from the trades:  " + sellTotal + " - " + buyTotal + " = " + profit;
-            }
-           
-            logger.info(" \n \n------------------------------------------------------------------------ \n"  
-               + profitMessage + "\n------------------------------------------------------------------------ \n");
+        // ANSI color codes for green (profit), red (loss), and bold
+        String ANSI_GREEN = "\u001B[32m";
+        String ANSI_RED = "\u001B[31m";
+        String ANSI_BOLD = "\u001B[1m";
+        String ANSI_RESET = "\u001B[0m";
         
+        String profitMessage;
+
+        if (profit > 0) {
+            profitMessage = ANSI_BOLD + ANSI_GREEN + " \t Total Profit  " + ANSI_RESET + " from the trades:  " + sellTotal + " - " + buyTotal + " = "  
+                            + ANSI_BOLD + ANSI_GREEN + profit + ANSI_RESET
+                            + "\n \t" + ANSI_BOLD + ANSI_GREEN + " ROI: " + String.format("%.2f", roi) + "%" + ANSI_RESET;
+        } else if (profit < 0) {
+            profitMessage = ANSI_BOLD + ANSI_RED + " \t Total Loss  " + ANSI_RESET + " from the trades:  " + sellTotal + " - " + buyTotal + " = " 
+                            + ANSI_BOLD + ANSI_RED + profit + ANSI_RESET
+                            + "\n \t" + ANSI_BOLD + ANSI_RED + " ROI: " + String.format("%.2f", roi) + "%" + ANSI_RESET;
         } else {
-            
-            logger.info("\n \n------------------------------------------------------------------------ \n "+
-           "[ORDERHELPER]  No trades were executed, no profit calculation possible "+
-            " \n ------------------------------------------------------------------------ \n");
+            profitMessage = " Total Profit from the trades:  " + sellTotal + " - " + buyTotal + " = " + profit
+                            + "\n \t" + ANSI_BOLD + " ROI: " + String.format("%.2f", roi) + "%" + ANSI_RESET;
         }
+       
+        logger.info(" \n \n------------------------------------------------------------------------ \n"  
+           + profitMessage + "\n------------------------------------------------------------------------ \n");
+    
+    } else {
+        logger.info("\n \n------------------------------------------------------------------------ \n "+
+       "[ORDERHELPER]  No trades were executed, no profit calculation possible "+
+        " \n ------------------------------------------------------------------------ \n");
     }
+}
+
 
 
 
@@ -409,47 +413,28 @@ public static double calculateAskVWAP(SimpleAlgoState state) {
     // }
 
    public static void populateLocalOrderBook(List<BidLevel> localBidLevels, List<AskLevel> localAskLevels, SimpleAlgoState state) {
-        // Add new bid levels from the state while aggregating quantities for existing prices
-        for (int i = 0; i < state.getBidLevels(); i++) {
-            BidLevel newBidLevel = state.getBidAt(i);
-            if (newBidLevel != null) {
-                boolean exists = false;
-                for (BidLevel bidLevel : localBidLevels) {
-                    if (bidLevel.price == newBidLevel.price) {
-                        bidLevel.quantity += newBidLevel.quantity;  // Aggregate quantities for matching price
-                        exists = true;
-                        break;
-                    }
-                }
-                if (!exists) {
-                    localBidLevels.add(newBidLevel);  // Add new level if no matching price found
-                }
-            }
+    // Add new bid levels from the state if they don't already exist in localBidLevels
+    for (int i = 0; i < state.getBidLevels(); i++) {
+        BidLevel newBidLevel = state.getBidAt(i);
+        if (newBidLevel != null && !localBidLevels.contains(newBidLevel)) { // Avoid duplicates
+            localBidLevels.add(newBidLevel);
         }
-
-        // Add new ask levels from the state while aggregating quantities for existing prices
-        for (int i = 0; i < state.getAskLevels(); i++) {
-            AskLevel newAskLevel = state.getAskAt(i);
-            if (newAskLevel != null) {
-                boolean exists = false;
-                for (AskLevel askLevel : localAskLevels) {
-                    if (askLevel.price == newAskLevel.price) {
-                        askLevel.quantity += newAskLevel.quantity;  // Aggregate quantities for matching price
-                        exists = true;
-                        break;
-                    }
-                }
-                if (!exists) {
-                    localAskLevels.add(newAskLevel);  // Add new level if no matching price found
-                }
-            }
-        }
-
-        // Sort the order book after updating it with new levels
-        sortOrderBook(localBidLevels, localAskLevels);
-
-        //logger.info("[ORDERHELPER] Updated local order book with new bid/ask levels from state.");
     }
+
+    // Add new ask levels from the state if they don't already exist in localAskLevels
+    for (int i = 0; i < state.getAskLevels(); i++) {
+        AskLevel newAskLevel = state.getAskAt(i);
+        if (newAskLevel != null && !localAskLevels.contains(newAskLevel)) { // Avoid duplicates
+            localAskLevels.add(newAskLevel);
+        }
+    }
+
+    // Sort the order book after adding new levels
+    sortOrderBook(localBidLevels, localAskLevels);
+    logger.info("[OrderHelper] Current Market State (sorted by time-price priority):\n" + formatOrderBook(localBidLevels, localAskLevels));
+
+    }
+
 
     public static void sortOrderBook(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
         // Sort bids in descending order (highest price first)

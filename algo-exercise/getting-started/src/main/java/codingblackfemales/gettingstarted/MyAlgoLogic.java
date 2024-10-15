@@ -38,7 +38,7 @@ public class MyAlgoLogic implements AlgoLogic {
         if (!isMarketStateLogged) {
             logger.info("[MyAlgoLogic] Initial Market State:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
             OrderHelper.sortOrderBook(localBidLevels, localAskLevels);
-            logger.info("[MyAlgoLogic] Current Market State (sorted by time-price priority) \n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
+            //logger.info("[MyAlgoLogic] Current Market State (sorted by time-price priority) \n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
             isMarketStateLogged = true;
         }
 

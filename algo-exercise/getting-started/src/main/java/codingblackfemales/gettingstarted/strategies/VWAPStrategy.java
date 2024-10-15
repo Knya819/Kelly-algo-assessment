@@ -47,8 +47,10 @@ public class VWAPStrategy implements ExecutionStrategy {
             }
         }
 
+
         // Step 2: Sort bid and ask levels to maintain time-price priority
         OrderHelper.sortOrderBook(localBidLevels, localAskLevels);
+        
 
         double bidVwap = OrderHelper.calculateBidVWAP(state);
         double askVwap = OrderHelper.calculateAskVWAP(state);
@@ -109,16 +111,18 @@ public class VWAPStrategy implements ExecutionStrategy {
                 }
             }
             logger.info("[VWAPStrategy] No ask level meets VWAP condition for sell.");
+
         }
+
+  // Clear lists to avoid reuse of stale data in the next call
+        localBidLevels.clear();
+        localAskLevels.clear();
 
         // Step 5: Final profit calculation and clearing lists
         OrderHelper.calculateProfit(buyTotal, sellTotal);
         logger.info("[VWAPStrategy] No action required, done for now.");
 
-        // Clear lists to avoid reuse of stale data in the next call
-        localBidLevels.clear();
-        localAskLevels.clear();
-
+      
         return NoAction.NoAction;
     }
 }
