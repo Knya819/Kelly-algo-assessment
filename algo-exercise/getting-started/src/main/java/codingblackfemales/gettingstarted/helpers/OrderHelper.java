@@ -250,21 +250,17 @@ public static double calculateAskVWAP(SimpleAlgoState state) {
         return 5;  // Default to 5% of the market volume in calmer markets
     }
 
-    // Calculate profit target with an interval (e.g., between 5% and 7% above VWAP)
-    public static boolean isWithinProfitTargetInterval(SimpleAlgoState state, double price) {
-        double vwap = calculateAskVWAP(state);
-        double lowerBound = vwap * 1.05;
-        double upperBound = vwap * 1.07;
-
+    // Check if price is within profit target interval (e.g., 5%-7% above VWAP)
+    public static boolean isWithinProfitTargetInterval(double askVwap, double price) {
+        double lowerBound = askVwap * 1.001;
+        double upperBound = askVwap * 1.07;
         return price >= lowerBound && price <= upperBound;
     }
 
-    // Calculate stop-loss threshold with an interval (e.g., between 92% and 95% of VWAP)
-    public static boolean isWithinStopLossInterval(SimpleAlgoState state, double price) {
-        double vwap = calculateAskVWAP(state);
-        double lowerBound = vwap * 0.92;
-        double upperBound = vwap * 0.95;
-
+    // Check if price is within stop-loss interval (e.g., 92%-95% of VWAP)
+    public static boolean isWithinStopLossInterval(double askVwap, double price) {
+        double lowerBound = askVwap * 0.92;
+        double upperBound = askVwap * 0.999;
         return price >= lowerBound && price <= upperBound;
     }
 
@@ -319,7 +315,7 @@ public static double calculateAskVWAP(SimpleAlgoState state) {
     // }
 
     // Method to update bid levels by reducing quantity and removing fully filled levels
-    public static void updateBidLevels(List<BidLevel> bidLevels, long price, long filledQuantity) {
+    public static void updateBidLevels(List<BidLevel> bidLevels, double price, long filledQuantity) {
         for (int i = 0; i < bidLevels.size(); i++) {
             BidLevel bidLevel = bidLevels.get(i);
             if (bidLevel.price == price) {
@@ -337,7 +333,7 @@ public static double calculateAskVWAP(SimpleAlgoState state) {
     }
 
     // Method to update ask levels by reducing quantity and removing fully filled levels
-    public static void updateAskLevels(List<AskLevel> askLevels, long price, long filledQuantity) {
+    public static void updateAskLevels(List<AskLevel> askLevels, double price, long filledQuantity) {
         for (int i = 0; i < askLevels.size(); i++) {
             AskLevel askLevel = askLevels.get(i);
             if (askLevel.price == price) {

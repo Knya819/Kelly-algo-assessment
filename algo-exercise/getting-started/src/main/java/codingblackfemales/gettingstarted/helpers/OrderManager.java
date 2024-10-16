@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 public class OrderManager {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderManager.class);
-    public static final long MAX_ACTIVE_ORDERS = 3;
+    public static final long MAX_ACTIVE_ORDERS = 10;
 
     // Method to handle both fully filled orders and excess active orders
     public static Action manageOrders(SimpleAlgoState state) {

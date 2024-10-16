@@ -29,10 +29,15 @@ public class MyAlgoBackTest extends AbstractAlgoBackTest {
         UnsafeBuffer tick;
 
         while ((tick = createTick()) != null) {
-            send(tick);  // Send each tick for processing in AlgoLogic
+            try {
+                System.out.println("Processing tick data: " + tick.toString());  // Log tick data for inspection
+                send(tick);  // Send each tick for processing in AlgoLogic
+            } catch (NumberFormatException e) {
+                System.err.println("[ERROR] NumberFormatException while processing tick: " + tick.toString());
+                e.printStackTrace();
+                throw new RuntimeException("Failed to process tick: " + tick.toString(), e);  // Provide tick data in the exception
+            }
         }
-
-        // After processing all ticks, you may want to output the final state of the order book
-       // System.out.println("[MyAlgoBackTest] Final Cumulative Order Book State:\n" + cumulativeOrderBook);
     }
+
 }
