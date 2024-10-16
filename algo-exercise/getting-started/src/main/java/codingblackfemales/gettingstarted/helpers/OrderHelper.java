@@ -80,7 +80,10 @@ public static double calculateBidVWAP(SimpleAlgoState state) {
     double totalVolume = 0;
     double totalPriceVolume = 0;
 
-    while (true) {
+ System.out.println(state.getBidLevels());
+
+    while (i < state.getBidLevels()) {
+    
         BidLevel bidLevel = state.getBidAt(i);
         if (bidLevel == null) {
             break;
@@ -114,7 +117,7 @@ public static double calculateAskVWAP(SimpleAlgoState state) {
     double totalVolume = 0;
     double totalPriceVolume = 0;
 
-    while (true) {
+    while (i < state.getBidLevels()) {
         AskLevel askLevel = state.getAskAt(i);
         if (askLevel == null) {
             break;
