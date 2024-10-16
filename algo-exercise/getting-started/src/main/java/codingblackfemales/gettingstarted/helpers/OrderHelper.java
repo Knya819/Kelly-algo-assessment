@@ -250,14 +250,14 @@ public static double calculateAskVWAP(SimpleAlgoState state) {
         return 5;  // Default to 5% of the market volume in calmer markets
     }
 
-    // Check if price is within profit target interval (e.g., 5%-7% above VWAP)
+    // Check if price is within profit target interval (e.g., 0.1%-7% above VWAP)
     public static boolean isWithinProfitTargetInterval(double askVwap, double price) {
         double lowerBound = askVwap * 1.001;
         double upperBound = askVwap * 1.07;
         return price >= lowerBound && price <= upperBound;
     }
 
-    // Check if price is within stop-loss interval (e.g., 92%-95% of VWAP)
+    // Check if price is within stop-loss interval (e.g., 92%-99% of VWAP)
     public static boolean isWithinStopLossInterval(double askVwap, double price) {
         double lowerBound = askVwap * 0.92;
         double upperBound = askVwap * 0.999;
