@@ -71,21 +71,16 @@ public abstract class AbstractAlgoBackTest extends SequencerTestCase {
     public abstract AlgoLogic createAlgoLogic();
 
     // Method to create and process a tick
-    public UnsafeBuffer createTick() {
+public UnsafeBuffer createTick() {
     MarketDataMessage marketDataMessage = provider.poll();
     if (marketDataMessage != null) {
         System.out.println("Market Data Message: " + marketDataMessage);
-        try {
-            UnsafeBuffer encoded = encoder.encode(marketDataMessage);
-            container.getMarketDataService().onMessage(encoded);
-            return encoded;
-        } catch (NumberFormatException e) {
-            System.err.println("[ERROR] NumberFormatException for message: " + marketDataMessage);
-            e.printStackTrace();
-            throw e; // Ensures the test fails
-        }
+        UnsafeBuffer encoded = encoder.encode(marketDataMessage);
+        container.getMarketDataService().onMessage(encoded);
+        return encoded;
     }
     return null;
-    }
+}
+
 
 }

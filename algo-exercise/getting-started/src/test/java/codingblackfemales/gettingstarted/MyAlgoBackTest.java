@@ -26,18 +26,11 @@ public class MyAlgoBackTest extends AbstractAlgoBackTest {
 
     @Test
     public void testExampleBackTest() throws Exception {
-        UnsafeBuffer tick;
+    UnsafeBuffer tick;
 
-        while ((tick = createTick()) != null) {
-            try {
-                System.out.println("Processing tick data: " + tick.toString());  // Log tick data for inspection
-                send(tick);  // Send each tick for processing in AlgoLogic
-            } catch (NumberFormatException e) {
-                System.err.println("[ERROR] NumberFormatException while processing tick: " + tick.toString());
-                e.printStackTrace();
-                throw new RuntimeException("Failed to process tick: " + tick.toString(), e);  // Provide tick data in the exception
-            }
-        }
+    while ((tick = createTick()) != null) {
+        send(tick);  // Process each tick in AlgoLogic
     }
+}
 
 }
