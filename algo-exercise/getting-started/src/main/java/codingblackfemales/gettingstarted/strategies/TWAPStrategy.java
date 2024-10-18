@@ -15,113 +15,147 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.ArrayList;
+import java.util.List;
+
 public class TWAPStrategy implements ExecutionStrategy {
 
     private static final Logger logger = LoggerFactory.getLogger(TWAPStrategy.class);
-    private static final long MAX_ACTIVE_ORDERS = 10; // Maximum active orders (can be made dynamic)
+    private static final long MAX_ACTIVE_ORDERS = 10;
+    private static final double BUY_BUDGET = 100000;
 
-    private List<BidLevel> localBidLevels = new ArrayList<>();  // Local copy of bid levels
-    private List<AskLevel> localAskLevels = new ArrayList<>();  // Local copy of ask levels
+    private List<BidLevel> localBidLevels = new ArrayList<>();
+    private List<AskLevel> localAskLevels = new ArrayList<>();
 
-    // Variables to track buy and sell information for profit calculation
     private double buyTotal = 0;
     private double sellTotal = 0;
+    private long totalBoughtQuantity = 0;  // Track total bought quantity
+    private long totalSoldQuantity = 0;    // Track total sold quantity
 
     @Override
-public Action execute(SimpleAlgoState state) {
-    // Refresh the order book from the latest state if both local lists are empty
-    if (localBidLevels.isEmpty() && localAskLevels.isEmpty()) {
-        OrderHelper.populateLocalOrderBook(localBidLevels, localAskLevels, state);
-
-
-        // If order book is completely empty after an attempt to populate, stop the logic
+    public Action execute(SimpleAlgoState state) {
+        // Step 1: Populate order book if local lists are empty
         if (localBidLevels.isEmpty() && localAskLevels.isEmpty()) {
-            logger.info("[TWAPStrategy] Order book is completely empty after attempting to refresh. No action will be taken.");
-            return NoAction.NoAction;
-        }
-    }
+            OrderHelper.populateLocalOrderBook(localBidLevels, localAskLevels, state);
 
-    // Sort bid and ask levels to maintain time-price priority
-    OrderHelper.sortOrderBook(localBidLevels, localAskLevels);
+            // Remove null entries if present
+            localBidLevels.removeIf(bidLevel -> bidLevel == null);
+            localAskLevels.removeIf(askLevel -> askLevel == null);
+       }
 
-    // Log the initial sorted state of the order book
-    logger.info("[MyAlgoLogic] Current Market State (sorted by time-price priority):\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
+        // Step 2: Sort bid and ask levels to maintain time-price priority
+        OrderHelper.sortOrderBook(localBidLevels, localAskLevels);
 
-    // Log bid and ask level counts after sorting
-    OrderHelper.logBidAskLevelCounts(localBidLevels, localAskLevels);
+        double bidTWAP = OrderHelper.calculateBidTWAP(state);
+        double askTWAP = OrderHelper.calculateAskTWAP(state);
 
-    double bidTwap = OrderHelper.calculateBidTWAP(state);
-    double askTwap = OrderHelper.calculateAskTWAP(state);
+        // Calculate and log remaining budget
+        double remainingBudget = BUY_BUDGET - buyTotal;
+        logger.info("[TWAPStrategy] Remaining Buy Budget: " + remainingBudget);
+        logger.info("[TWAPStrategy] Filled Bought Quantity: " + totalBoughtQuantity + ", Filled Sold Quantity: " + totalSoldQuantity);
 
-    // BUY Logic: Execute only if bid levels are available
-    if (!localBidLevels.isEmpty() && state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
-        for (BidLevel bidLevel : localBidLevels) {
-            long price = bidLevel.price;
-            long bidQuantity = Math.round(bidLevel.quantity * 1); // Use 100% of bidLevel quantity
+        // Step 3: Conditional Buy logic - Only buy if buyTotal is within BUY_BUDGET
+        if (remainingBudget > 0 && !localBidLevels.isEmpty() && state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
+            for (BidLevel bidLevel : localBidLevels) {
+                if (bidLevel == null) continue;
+                long price = bidLevel.price;
+                long bidQuantity = bidLevel.quantity;
 
-            logger.info("[TWAPStrategy] Checking buy logic: Bid Price = " + price + ", Bid TWAP = " + bidTwap);
-            if (price <= bidTwap ) {
-                logger.info("[TWAPStrategy] Placing buy order below Bid TWAP: " + bidTwap + " at price: " + price);
-                Action action = new CreateChildOrder(Side.BUY, bidQuantity, price);
+                logger.info("[TWAPStrategy] Checking buy logic: Bid Price = " + price + ", Bid TWAP = " + bidTWAP);
 
-                // Accumulate the buy total
-                buyTotal += price * bidQuantity;
+                if (price > bidTWAP) {
+                    logger.info("[TWAPStrategy] Price too high; checking the next bid level for possible buy...");
+                    continue;
+                }
 
-                // Update the local bid levels using OrderHelper
-                OrderHelper.updateBidLevels(localBidLevels, price, bidQuantity);
-                logger.info("[TWAPStrategy] Updated local order book state after buy:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
+                if (price <= bidTWAP && remainingBudget >= (price * bidQuantity)) {
+                    logger.info("[TWAPStrategy] Placing buy order at price: " + price);
+                    Action action = new CreateChildOrder(Side.BUY, bidQuantity, price);
 
-                // Log updated bid and ask level counts after buy
-                OrderHelper.logBidAskLevelCounts(localBidLevels, localAskLevels);
+                    buyTotal += price * bidQuantity;
+                    totalBoughtQuantity += bidQuantity;  // Track total bought quantity
+                    remainingBudget = BUY_BUDGET - buyTotal;
+                    logger.info("[TWAPStrategy] Remaining Buy Budget after purchase: " + remainingBudget);
+                    logger.info("[TWAPStrategy] Filled Bought Quantity: " + totalBoughtQuantity + ", Filled Sold Quantity: " + totalSoldQuantity);
 
-                return action;
-            } else {
-                logger.info("[TWAPStrategy] Bid price " + price + " does not meet TWAP condition. Skipping to next bid level.");
+                    OrderHelper.updateBidLevels(localBidLevels, price, bidQuantity);
+                    logger.info("[TWAPStrategy] Updated order book after buy:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
+
+                    OrderHelper.logBidAskLevelCounts(localBidLevels, localAskLevels);
+                    return action;
+                }
             }
+            logger.info("[TWAPStrategy] No bid level meets TWAP condition for buy.");
+        } else if (remainingBudget <= 0) {
+            logger.info("[TWAPStrategy] Buy budget exhausted. Stopping further buys.");
         }
-        logger.info("[TWAPStrategy] No bid level meets TWAP condition for buy.");
-    }
 
-    // SELL Logic: Execute only if ask levels are available
-    if (!localAskLevels.isEmpty() && state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
-        for (AskLevel askLevel : localAskLevels) {
-            long askPrice = askLevel.price;
-            long askQuantity = Math.round(askLevel.quantity * 1); // Use 100% of askLevel quantity
+        // Step 4: Sell logic - Only sell if there is enough bought quantity to sell
+        if (!localAskLevels.isEmpty() && state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
+            for (AskLevel askLevel : localAskLevels) {
+                if (askLevel == null) continue;
+                long askPrice = askLevel.price;
+                long askQuantity = askLevel.quantity;
 
-            logger.info("[TWAPStrategy] Checking sell logic: Ask Price = " + askPrice + ", Ask TWAP = " + askTwap);
-            if (askPrice >= askTwap) {
-                logger.info("[TWAPStrategy] Placing sell order above Ask TWAP: " + askTwap + " at price: " + askPrice);
-                Action action = new CreateChildOrder(Side.SELL, askQuantity, askPrice);
+                // Ensure we only sell what we have bought
+                if (totalSoldQuantity + askQuantity > totalBoughtQuantity) {
+                    askQuantity = totalBoughtQuantity - totalSoldQuantity;
+                    if (askQuantity <= 0) {
+                        logger.info("[TWAPStrategy] No more quantity to sell. Stopping sell.");
+                        break;
+                    }
+                }
 
-                // Accumulate the sell total
-                sellTotal += askPrice * askQuantity;
+                logger.info("[TWAPStrategy] Checking sell logic: Ask Price = " + askPrice + ", Ask TWAP = " + askTWAP);
+                logger.info("[TWAPStrategy] Filled Bought Quantity: " + totalBoughtQuantity + ", Filled Sold Quantity: " + totalSoldQuantity);
 
-                // Update the local ask levels using OrderHelper
-                OrderHelper.updateAskLevels(localAskLevels, askPrice, askQuantity);
-                logger.info("[TWAPStrategy] Updated local order book state after sell:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
+                // Check if ask price is within the profit target range (5%-7% above TWAP)
+                if (OrderHelper.isWithinProfitTargetIntervalTwap(askTWAP, askPrice)) {
+                    logger.info("[TWAPStrategy] Ask price within profit target range; placing sell order.");
+                    Action action = new CreateChildOrder(Side.SELL, askQuantity, askPrice);
 
-                // Log updated bid and ask level counts after sell
-                OrderHelper.logBidAskLevelCounts(localBidLevels, localAskLevels);
+                    sellTotal += askPrice * askQuantity;
+                    totalSoldQuantity += askQuantity;  // Track total sold quantity
+                    OrderHelper.updateAskLevels(localAskLevels, askPrice, askQuantity);
+                    logger.info("[TWAPStrategy] Updated order book after sell:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
+                    logger.info("[TWAPStrategy] Filled Bought Quantity: " + totalBoughtQuantity + ", Filled Sold Quantity: " + totalSoldQuantity);
 
-                return action;
-            } else {
-                logger.info("[TWAPStrategy] Ask price " + askPrice + " does not meet TWAP condition. Skipping to next ask level.");
+                    OrderHelper.logBidAskLevelCounts(localBidLevels, localAskLevels);
+                    return action;
+                }
+
+                // Check if ask price is within the stop-loss range (92%-95% of TWAP)
+                if (OrderHelper.isWithinStopLossIntervalTwap(askTWAP, askPrice)) {
+                    logger.info("[TWAPStrategy] Ask price within stop-loss range; placing sell order.");
+                    Action action = new CreateChildOrder(Side.SELL, askQuantity, askPrice);
+
+                    sellTotal += askPrice * askQuantity;
+                    totalSoldQuantity += askQuantity;  // Track total sold quantity
+                    OrderHelper.updateAskLevels(localAskLevels, askPrice, askQuantity);
+                    logger.info("[TWAPStrategy] Updated order book after sell:\n" + OrderHelper.formatOrderBook(localBidLevels, localAskLevels));
+                    logger.info("[TWAPStrategy] Filled Bought Quantity: " + totalBoughtQuantity + ", Filled Sold Quantity: " + totalSoldQuantity);
+
+                    OrderHelper.logBidAskLevelCounts(localBidLevels, localAskLevels);
+                    return action;
+                }
+
+                // Log if the ask price does not meet TWAP or interval conditions
+                logger.info("[TWAPStrategy] Price does not meet TWAP, profit target, or stop-loss; checking the next ask level...");
             }
+            logger.info("[TWAPStrategy] No ask level meets the conditions for sell.");
         }
-        logger.info("[TWAPStrategy] No ask level meets TWAP condition for sell.");
+
+        // Clear lists to avoid reuse of stale data in the next call
+        localBidLevels.clear();
+        localAskLevels.clear();
+
+        logger.info("[TWAPStrategy] No action required, done for now.");
+
+        // Step 5: Final profit calculation
+        OrderHelper.calculateProfit(buyTotal, sellTotal);
+
+        return NoAction.NoAction;
     }
-
-    // Calculate profit at the end of the evaluation
-    OrderHelper.calculateProfit(buyTotal, sellTotal);
-
-    logger.info("[TWAPStrategy] No action required, done for now.");
-
-    // Clear lists to avoid reuse of stale data in the next call
-    localBidLevels.clear();
-    localAskLevels.clear();
-
-    return NoAction.NoAction;
-    }   
-
-
 }
