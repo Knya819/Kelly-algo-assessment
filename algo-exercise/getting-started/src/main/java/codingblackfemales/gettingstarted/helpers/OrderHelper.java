@@ -24,7 +24,7 @@ public class OrderHelper {
         double totalPrice = 0;
         int count = 0;
 
-        while (i < state.getBidLevels() && count < 100) {
+        while (i < state.getBidLevels() && count < 10) {
             BidLevel bidLevel = state.getBidAt(i);
 
             if (bidLevel == null) {
@@ -39,13 +39,13 @@ public class OrderHelper {
         return count > 0 ? totalPrice / count : 0;
     }
 
-    // Calculate TWAP for Asks using the last 100 ask orders
+    // Calculate TWAP for Asks using the last 10 ask orders
     public static double calculateAskTWAP(SimpleAlgoState state) {
         int i = 0;
         double totalPrice = 0;
         int count = 0;
 
-        while (i < state.getAskLevels() && count < 100) {
+        while (i < state.getAskLevels() && count < 10) {
             AskLevel askLevel = state.getAskAt(i);
 
             if (askLevel == null) {
@@ -80,7 +80,6 @@ public static double calculateBidVWAP(SimpleAlgoState state) {
     double totalVolume = 0;
     double totalPriceVolume = 0;
 
- System.out.println(state.getBidLevels());
 
     while (i < state.getBidLevels()) {
     
@@ -262,8 +261,23 @@ public static double calculateAskVWAP(SimpleAlgoState state) {
 
     // Check if price is within stop-loss interval (e.g., 92%-99% of VWAP)
     public static boolean isWithinStopLossInterval(double askVwap, double price) {
-        double lowerBound = askVwap * 0.92;
+        double lowerBound = askVwap * 0.98;
         double upperBound = askVwap * 0.999;
+        return price >= lowerBound && price <= upperBound;
+    }
+
+
+    // Check if price is within profit target interval (e.g., 0.1%-7% above TWAP)
+    public static boolean isWithinProfitTargetIntervalTwap(double askTwap, double price) {
+        double lowerBound = askTwap * 1.001; // 0.1% above TWAP
+        double upperBound = askTwap * 1.07;  // 7% above TWAP
+        return price >= lowerBound && price <= upperBound;
+    }
+
+    // Check if price is within stop-loss interval (e.g., 92%-99% of TWAP)
+    public static boolean isWithinStopLossIntervalTwap(double askTwap, double price) {
+        double lowerBound = askTwap * 0.98;  // 92% of TWAP
+        double upperBound = askTwap * 0.999; // 99% of TWAP
         return price >= lowerBound && price <= upperBound;
     }
 
