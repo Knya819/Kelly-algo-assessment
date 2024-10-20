@@ -88,7 +88,7 @@ To run the tests for the project, you can use the following commands:
 ./mvnw -Dtest=MyAlgoBackTest test --projects algo-exercise/getting-started
 ```
 ### Logging for Better Understanding
-I have used various logger.info, logger.debug, and logger.warn statements throughout the project to make the execution and understanding of the strategy clear. These logs provide insights into different stages of the algorithm execution, helping to follow the logic step by step.
+I have used various `logger.info`, `logger.debug`, and `logger.warn` statements throughout the project to make the execution and understanding of the strategy clear. These logs provide insights into different stages of the algorithm execution, helping to follow the logic step by step.
 
 
 
