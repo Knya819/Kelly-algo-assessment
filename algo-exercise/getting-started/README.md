@@ -1,6 +1,30 @@
 # Project Overview
 
 The aim of this project is to develop an algorithmic trading system that executes buy, sell, and cancel actions on child orders with the objective of generating a profit.
+## Table of Contents
+
+1. [Project Overview](#project-overview)
+2. [Structure of the Project](#structure-of-the-project)
+   - [Main Class: `MyAlgoLogic`](#main-class-myalgologic)
+   - [Subfolders: `strategies` and `helpers`](#subfolders-strategies-and-helpers)
+     - [`strategies` Folder](#strategies-folder)
+     - [`helpers` Folder](#helpers-folder)
+3. [Resources Folder](#resources-folder)
+4. [Test Folder](#test-folder)
+5. [How to Run the Code](#how-to-run-the-code)
+6. [Logging for Better Understanding](#logging-for-better-understanding)
+7. [Strategy Explanation: TWAP and VWAP](#strategy-explanation-twap-and-vwap)
+   - [TWAP (Time Weighted Average Price)](#twap-time-weighted-average-price)
+   - [VWAP (Volume Weighted Average Price)](#vwap-volume-weighted-average-price)
+8. [Order Flow in `VWAPStrategy`](#order-flow-in-vwapstrategy)
+   - [Order Book Population](#order-book-population)
+   - [Buy Logic](#buy-logic)
+   - [Sell Logic](#sell-logic)
+   - [Order Management](#order-management)
+   - [Final Steps](#final-steps)
+9. [Usage of `OrderHelper` in `VWAPStrategy`](#usage-of-orderhelper-in-vwapstrategy)
+
+
 # `main` Folder
 
 ## Main Class: `MyAlgoLogic`
