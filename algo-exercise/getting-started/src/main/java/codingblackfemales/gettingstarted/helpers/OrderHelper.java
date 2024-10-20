@@ -20,7 +20,7 @@ public class OrderHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderHelper.class);
 
-    // Calculate TWAP: Time-Weighted Average Price using the last 100 child orders for Bids
+    // Calculate TWAP: Time-Weighted Average Price using the last 10 child orders for Bids
     public static double calculateBidTWAP(SimpleAlgoState state) {
         int i = 0;
         double totalPrice = 0;
@@ -148,7 +148,7 @@ public class OrderHelper {
         return (bidVWAP + askVWAP) / 2;
     }
 
-    // Calculate total market volume from child orders
+    // Calculate total market volume from child orders (this is for the POV strategy)
     public static long calculateTotalVolume(SimpleAlgoState state) {
         return state.getChildOrders().stream()
             .mapToLong(ChildOrder::getQuantity)
@@ -198,7 +198,7 @@ public class OrderHelper {
         }
 
         // Return the average spread as a measure of market volatility
-        return count > 0 ? totalSpread / count : 0.1;  // Default to 0.1 if no levels to compare
+        return count > 0 ? totalSpread / count : 0.1;  // Default to 0.1 if no levels to compare (in this case I use TWAP strategy)
     }
 
 
@@ -232,10 +232,10 @@ public class OrderHelper {
         return price >= lowerBound && price <= upperBound;
     }
 
-    // Check if price is within stop-loss interval (e.g., 92%-99% of VWAP)
-    public static boolean isWithinStopLossInterval(double askVwap, double price) {
-        double lowerBound = askVwap * 0.68;
-        double upperBound = askVwap * 0.999;
+    // Check if price is within stop-loss interval (80%-99% of VWAP)
+    public static boolean isWithinStopLossInterval(double bidVwap, double price) {
+        double lowerBound = bidVwap * 0.8;
+        double upperBound = bidVwap * 0.999;
         return price >= lowerBound && price <= upperBound;
     }
 
@@ -247,13 +247,13 @@ public class OrderHelper {
         return price >= lowerBound && price <= upperBound;
     }
 
-    // Check if price is within stop-loss interval (e.g., 92%-99% of TWAP)
+    // Check if price is within stop-loss interval (e.g., 80%-99% of TWAP)
     public static boolean isWithinStopLossIntervalTwap(double bidTwap, double price) {
-        double lowerBound = bidTwap * 0.98;  // 92% of TWAP
+        double lowerBound = bidTwap * 0.80;  // 92% of TWAP
         double upperBound = bidTwap * 0.999; // 99% of TWAP
         return price >= lowerBound && price <= upperBound;
     }
-
+ //Method to calculate the profit and returen on investement
     public static void calculateProfit(double buyTotal, double sellTotal) {
         if (buyTotal > 0 || sellTotal > 0) {
             double profit = sellTotal - buyTotal;
@@ -326,7 +326,7 @@ public class OrderHelper {
         }
     }
 
-    // Utility method to format the order book for better logging
+    // Utility method to format the order book for better logging (use for the template)
     public static String formatOrderBook(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
         StringBuilder sb = new StringBuilder();
 
@@ -396,7 +396,7 @@ public class OrderHelper {
 
     }
 
-
+        // Method to sort using the time  price priotity
     public static void sortOrderBook(List<BidLevel> bidLevels, List<AskLevel> askLevels) {
         // Sort bids in descending order (highest price first)
         bidLevels.sort((b1, b2) -> Long.compare(b2.price, b1.price));
@@ -404,57 +404,6 @@ public class OrderHelper {
         askLevels.sort((a1, a2) -> Long.compare(a1.price, a2.price));
     }
 
-        public static void updateLocalOrderBook(List<BidLevel> localBidLevels, List<AskLevel> localAskLevels, SimpleAlgoState state) {
-            // Step 1: Update bid levels with new data from the tick
-            for (int i = 0; i < state.getBidLevels(); i++) {
-                BidLevel newBidLevel = state.getBidAt(i);
-                if (newBidLevel != null) {
-                    // Check if the bid level exists in localBidLevels
-                    Optional<BidLevel> existingBidLevel = localBidLevels.stream()
-                        .filter(bidLevel -> bidLevel.price == newBidLevel.price)
-                        .findFirst();
-
-                    if (existingBidLevel.isPresent()) {
-                        // If the bid level exists, update its quantity
-                        BidLevel updatedBidLevel = existingBidLevel.get();
-                        updatedBidLevel.quantity = newBidLevel.quantity;
-                    } else {
-                        // If it's a new bid level, add it to the localBidLevels
-                        localBidLevels.add(newBidLevel);
-                    }
-                }
-            }
-
-            // Step 2: Update ask levels with new data from the tick
-            for (int i = 0; i < state.getAskLevels(); i++) {
-                AskLevel newAskLevel = state.getAskAt(i);
-                if (newAskLevel != null) {
-                    // Check if the ask level exists in localAskLevels
-                    Optional<AskLevel> existingAskLevel = localAskLevels.stream()
-                        .filter(askLevel -> askLevel.price == newAskLevel.price)
-                        .findFirst();
-
-                    if (existingAskLevel.isPresent()) {
-                        // If the ask level exists, update its quantity
-                        AskLevel updatedAskLevel = existingAskLevel.get();
-                        updatedAskLevel.quantity = newAskLevel.quantity;
-                    } else {
-                        // If it's a new ask level, add it to the localAskLevels
-                        localAskLevels.add(newAskLevel);
-                    }
-                }
-            }
-
-            // Step 3: Remove any bid/ask levels where the quantity is zero (i.e., they are fully filled)
-            localBidLevels.removeIf(bidLevel -> bidLevel.quantity == 0);
-            localAskLevels.removeIf(askLevel -> askLevel.quantity == 0);
-
-            // Step 4: Sort the order book after the updates
-            sortOrderBook(localBidLevels, localAskLevels);
-
-            // Log the updated state of the order book
-            logger.info("[OrderHelper] Updated Market State (sorted by time-price priority):\n" + formatOrderBook(localBidLevels, localAskLevels));
-        }
-
+        
 
 }

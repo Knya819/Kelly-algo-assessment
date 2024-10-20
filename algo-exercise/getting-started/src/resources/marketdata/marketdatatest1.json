@@ -2,9 +2,9 @@
 0,{"instrumentId":1234,"venue":"XLON","instrumentStatus":"CONTINUOUS","bidBook":[{"price":1035,"size":96},{"price":1020,"size":54},{"price":1000,"size":53}],"askBook":[]}
 2,{"instrumentId":1234,"venue":"XLON","bidBook":[{"price":1020,"size":89},{"price":1000,"size":53}]}
 2,{"instrumentId":1234,"venue":"XLON","bidBook":[{"price":1020,"size":45},{"price":1000,"size":53}]}
-2,{"instrumentId":1234,"venue":"XLON","bidBook":[{"price":1011,"size":30},{"price":1000,"size":53}]}
-2,{"instrumentId":1234,"venue":"XLON","bidBook":[{"price":1011,"size":30},{"price":1000,"size":12}]}
-2,{"instrumentId":1234,"venue":"XLON","bidBook":[{"price":1005,"size":30},{"price":1000,"size":92},{"price":1000,"size":12}]}
+1,{"instrumentId":1234,"venue":"XLON","askBook":[{"price":1011,"size":30},{"price":1000,"size":53}]}
+1,{"instrumentId":1234,"venue":"XLON","askBook":[{"price":1011,"size":30},{"price":1000,"size":12}]}
+1,{"instrumentId":1234,"venue":"XLON","askBook":[{"price":1005,"size":30},{"price":1000,"size":92},{"price":1000,"size":12}]}
 2,{"instrumentId":1234,"venue":"XLON","bidBook":[{"price":1005,"size":30},{"price":1000,"size":12},{"price":1000,"size":92},{"price":999,"size":89}]}
 0,{"instrumentId":1234,"venue":"XLON","instrumentStatus":"CONTINUOUS","bidBook":[{"price":1005,"size":30},{"price":1000,"size":12},{"price":999,"size":89}],"askBook":[{"price":1007,"size":58}]}
 2,{"instrumentId":1234,"venue":"XLON","bidBook":[{"price":1005,"size":30},{"price":1002,"size":89},{"price":1000,"size":12}]}

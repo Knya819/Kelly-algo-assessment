@@ -61,7 +61,7 @@ public abstract class AbstractAlgoBackTest extends SequencerTestCase {
         network.addConsumer(container);
 
         // Initialize Market Data Provider and Encoder
-        provider = new SimpleFileMarketDataProvider("src/resources/marketdata/marketdatatest.json");
+        provider = new SimpleFileMarketDataProvider("src/resources/marketdata/marketdatatest1.json");
         encoder = new MarketDataEncoder();
 
         return sequencer;
@@ -71,16 +71,16 @@ public abstract class AbstractAlgoBackTest extends SequencerTestCase {
     public abstract AlgoLogic createAlgoLogic();
 
     // Method to create and process a tick
-public UnsafeBuffer createTick() {
-    MarketDataMessage marketDataMessage = provider.poll();
-    if (marketDataMessage != null) {
-        System.out.println("Market Data Message: " + marketDataMessage);
-        UnsafeBuffer encoded = encoder.encode(marketDataMessage);
-        container.getMarketDataService().onMessage(encoded);
-        return encoded;
+    public UnsafeBuffer createTick() {
+        MarketDataMessage marketDataMessage = provider.poll();
+        if (marketDataMessage != null) {
+            System.out.println("Market Data Message: " + marketDataMessage);
+            UnsafeBuffer encoded = encoder.encode(marketDataMessage);
+            container.getMarketDataService().onMessage(encoded);
+            return encoded;
+        }
+        return null;
     }
-    return null;
-}
 
 
 }

@@ -37,7 +37,7 @@ public class VWAPStrategy implements ExecutionStrategy {
 
     @Override
     public Action execute(SimpleAlgoState state) {
-        // Step 1: Populate order book if local lists are empty
+        //  Populate order book if local lists are empty
         if (localBidLevels.isEmpty() && localAskLevels.isEmpty()) {
             OrderHelper.populateLocalOrderBook(localBidLevels, localAskLevels, state);
 
@@ -47,24 +47,21 @@ public class VWAPStrategy implements ExecutionStrategy {
             
         }
 
-        // Step 2: Sort bid and ask levels to maintain time-price priority
+        // Sort bid and ask levels to maintain time-price priority
         OrderHelper.sortOrderBook(localBidLevels, localAskLevels);
         
 
         double bidVwap = OrderHelper.calculateBidVWAP(state);
         double askVwap = OrderHelper.calculateAskVWAP(state);
 
-         
 
-
-
-        // Calculate and log remaining budget
+        // Calculate remaining budget
         double remainingBudget = BUY_BUDGET - buyTotal;
         logger.info("[VWAPStrategy] Remaining Buy Budget: " + remainingBudget);
         logger.info("[VWAPStrategy] Bought Quantity: " + totalBoughtQuantity + ", Sold Quantity: " + totalSoldQuantity);
 
 
-        // Step 3: Conditional Buy logic - Only buy if buyTotal is within BUY_BUDGET
+        // Conditional Buy logic - Only buy if buyTotal is within BUY_BUDGET,askPrice < bidVwap or we are within the stop-loss interval
         if (remainingBudget > 0 && !localBidLevels.isEmpty() && state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
             for (AskLevel askLevel : localAskLevels) {
                 if (askLevel == null) continue;
@@ -73,12 +70,13 @@ public class VWAPStrategy implements ExecutionStrategy {
 
                 logger.info("[VWAPStrategy] Checking buy logic: Ask Price = " + askPrice + ", Bid VWAP = " + bidVwap);
                 
-                if (askPrice > bidVwap) {
-                    logger.info("[VWAPStrategy] Price too high; checking the next bid level for possible buy...");
-                    continue;
-                }// not sure here
-                
-                if (askPrice <= bidVwap && remainingBudget >= (askPrice * askQuantity)) {
+                // Check if the ask price is within the stop-loss interval
+                if (askPrice > bidVwap && !OrderHelper.isWithinStopLossInterval(bidVwap, askPrice)) {
+                    logger.info("[VWAPStrategy] Price too high and not within stop-loss interval; skipping this level...");
+                    continue;  // Skip if not within the stop-loss interval
+                }
+        
+                if ( remainingBudget >= (askPrice * askQuantity)) {
                     logger.info("[VWAPStrategy] Placing buy order at price: " + askPrice);
                     Action action = new CreateChildOrder(Side.BUY, askQuantity, askPrice);
 
@@ -104,7 +102,7 @@ public class VWAPStrategy implements ExecutionStrategy {
         logger.info("[VWAPStrategy] Buy budget reached or exceeded. Stopping further buys.");
         }
 
-        // Step 4: Sell logic
+        // Sell logic
         if (!localBidLevels.isEmpty() && state.getActiveChildOrders().size() < MAX_ACTIVE_ORDERS) {
             for (BidLevel bidLevel : localBidLevels) {
                 if (bidLevel == null) continue;

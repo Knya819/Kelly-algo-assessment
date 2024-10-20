@@ -27,7 +27,7 @@ public class MyAlgoTest extends AbstractAlgoTest {
         send(createTick1());  // Tick with only bids
         send(createTick2());  // Tick with only asks
         send(createTick3());  // Tick with both bids and asks
-        // send(createTick4());  // Random
-    // }
-}
+        send(createTick4());  // Random
+    
+    }
 }

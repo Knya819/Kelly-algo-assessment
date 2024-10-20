@@ -28,9 +28,9 @@ public class MyAlgoBackTest extends AbstractAlgoBackTest {
     public void testExampleBackTest() throws Exception {
     UnsafeBuffer tick;
 
-    while ((tick = createTick()) != null) {
-        send(tick);  // Process each tick in AlgoLogic
+        while ((tick = createTick()) != null) {
+            send(tick);  // Process each tick in AlgoLogic
+        }
     }
-}
 
 }
