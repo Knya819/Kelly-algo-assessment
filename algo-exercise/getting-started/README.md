@@ -1,7 +1,7 @@
 # Project Overview
 
 The aim of this project is to develop an algorithmic trading system that executes buy, sell, and cancel actions on child orders with the objective of generating a profit.
-# main Folder
+# `main` Folder
 
 ## Main Class: `MyAlgoLogic`
 
