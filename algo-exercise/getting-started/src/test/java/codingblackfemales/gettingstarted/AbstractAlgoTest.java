@@ -121,11 +121,14 @@ public abstract class AbstractAlgoTest extends SequencerTestCase {
 
         encoder.venue(Venue.XLON);
         encoder.instrumentId(123L);
+
+        encoder.bidBookCount(0); // No bid levels
+
         encoder.askBookCount(2)
                 .next().price(120L).size(200L)
                 .next().price(125L).size(300L);
 
-        encoder.bidBookCount(0); // No bid levels
+        
 
         encoder.instrumentStatus(InstrumentStatus.CONTINUOUS);
         encoder.source(Source.STREAM);
@@ -147,11 +150,11 @@ public abstract class AbstractAlgoTest extends SequencerTestCase {
         encoder.instrumentId(123L);
 
         encoder.bidBookCount(2)  
-                .next().price(110L).size(200L)
-                .next().price(115L).size(500L);
+                .next().price(120L).size(200L)
+                .next().price(125L).size(500L);
 
         encoder.askBookCount(2)
-                .next().price(118L).size(300L)
+                .next().price(118L).size(100L)
                 .next().price(120L).size(400L);
 
         encoder.instrumentStatus(InstrumentStatus.CONTINUOUS);
