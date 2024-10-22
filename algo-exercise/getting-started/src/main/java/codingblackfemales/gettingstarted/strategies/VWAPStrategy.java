@@ -120,7 +120,7 @@ public class VWAPStrategy implements ExecutionStrategy {
 
                     // New logic: Check if bought quantity is greater than sold, and proceed with selling
                     if (totalBoughtQuantity > totalSoldQuantity) {
-                        logger.info("[VWAPStrategy] Bought quantity is greater than sold quantity. Proceeding with sell even if Ask VWAP is NaN.");
+                        logger.info("[VWAPStrategy] Bought quantity is greater than sold quantity. Proceeding with sell even if there no Ask VWAP .");
 
                         // Place a sell order at the current bid price
                         Action action = new CreateChildOrder(Side.SELL, bidQuantity, bidPrice);

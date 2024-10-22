@@ -234,8 +234,8 @@ public class OrderHelper {
 
     // Check if price is within stop-loss interval (80%-99% of VWAP)
     public static boolean isWithinStopLossInterval(double bidVwap, double price) {
-        double lowerBound = bidVwap * 0.8;
-        double upperBound = bidVwap * 0.999;
+        double lowerBound = bidVwap ;
+        double upperBound = bidVwap + 20;
         return price >= lowerBound && price <= upperBound;
     }
 
