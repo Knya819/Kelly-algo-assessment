@@ -66,7 +66,7 @@ public class VWAPStrategy implements ExecutionStrategy {
             for (AskLevel askLevel : localAskLevels) {
                 if (askLevel == null) continue;
                 long askPrice = askLevel.price;
-                long askQuantity = askLevel.quantity;
+                long askQuantity = askLevel.quantity; //(long) Math.floor(askLevel.quantity * 0.5) if I want a specific quantity like 50%;
 
                 logger.info("[VWAPStrategy] Checking buy logic: Ask Price = " + askPrice + ", Bid VWAP = " + bidVwap);
                 
