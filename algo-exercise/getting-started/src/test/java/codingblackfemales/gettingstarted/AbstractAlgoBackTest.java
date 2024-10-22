@@ -61,7 +61,7 @@ public abstract class AbstractAlgoBackTest extends SequencerTestCase {
         network.addConsumer(container);
 
         // Initialize Market Data Provider and Encoder
-        provider = new SimpleFileMarketDataProvider("src/resources/marketdata/marketdatatest1.json");
+        provider = new SimpleFileMarketDataProvider("src/resources/marketdata/marketdatatest.json");
         encoder = new MarketDataEncoder();
 
         return sequencer;
