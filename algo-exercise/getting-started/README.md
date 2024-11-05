@@ -1,3 +1,6 @@
+# Important Note
+For optimal performance, please switch to either the `node-two` or `node-four` branch, as the code may not function properly on the `main` branch. This ensures all dependencies and configurations are compatible with the current UI implementation.
+
 # Project Overview
 
 The aim of this project is to develop an algorithmic trading system that executes buy, sell, and cancel actions on child orders with the objective of generating a profit.
